@@ -3,6 +3,7 @@ class I18n {
   constructor() {
     this.currentLang = this.detectLanguage();
     this.translations = {};
+    this.loaded = false;
     this.loadTranslations();
   }
 
@@ -18,9 +19,17 @@ class I18n {
 
   async loadTranslations() {
     try {
+      console.log('Loading translations...');
+
       const [enData, zhData] = await Promise.all([
-        fetch('./src/locales/en.json').then(r => r.json()),
-        fetch('./src/locales/zh.json').then(r => r.json())
+        fetch('./src/locales/en.json').then(r => {
+          console.log('en.json fetched');
+          return r.json();
+        }),
+        fetch('./src/locales/zh.json').then(r => {
+          console.log('zh.json fetched');
+          return r.json();
+        })
       ]);
 
       this.translations = {
@@ -28,8 +37,13 @@ class I18n {
         zh: zhData
       };
 
+      this.loaded = true;
+      console.log('Translations loaded:', this.translations);
+      console.log('Current language:', this.currentLang);
+
       this.updatePage();
       this.updateLanguageButtons();
+      this.bindEvents();
     } catch (error) {
       console.error('Failed to load translations:', error);
     }
@@ -38,7 +52,7 @@ class I18n {
   get(path, lang = this.currentLang) {
     const keys = path.split('.');
     let value = this.translations[lang];
-    
+
     for (const key of keys) {
       if (value && typeof value === 'object') {
         value = value[key];
@@ -46,11 +60,17 @@ class I18n {
         return path; // 返回原路径作为后备
       }
     }
-    
+
     return value || path;
   }
 
   setLanguage(lang) {
+    console.log('setLanguage called:', lang, 'loaded:', this.loaded);
+    if (!this.loaded) {
+      console.warn('Translations not loaded yet');
+      return;
+    }
+
     this.currentLang = lang;
     localStorage.setItem('qr-toolkit-lang', lang);
     this.updatePage();
@@ -63,6 +83,8 @@ class I18n {
   }
 
   updatePage() {
+    if (!this.loaded) return;
+
     // 更新所有带有 data-i18n 属性的元素
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
@@ -104,20 +126,24 @@ class I18n {
       }
     });
   }
+
+  bindEvents() {
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      // 移除之前的事件监听器（如果存在）
+      btn.onclick = null;
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const lang = btn.getAttribute('data-lang');
+        console.log('Language switch:', lang);
+        this.setLanguage(lang);
+      });
+    });
+  }
 }
 
 // 初始化
 const i18n = new I18n();
-
-// 绑定语言切换按钮
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const lang = btn.getAttribute('data-lang');
-      i18n.setLanguage(lang);
-    });
-  });
-});
 
 // 导出供其他模块使用
 if (typeof module !== 'undefined' && module.exports) {
