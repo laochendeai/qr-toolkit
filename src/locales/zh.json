@@ -1,0 +1,102 @@
+{
+  "site": {
+    "title": "QR 工具箱",
+    "subtitle": "生成二维码 · 扫码识别 · 批量打印",
+    "engineLoading": "QR 引擎：加载中…",
+    "engineReady": "QR 引擎：就绪",
+    "footer": "QR 工具箱 · 本地运行"
+  },
+  "tabs": {
+    "generate": "生成",
+    "scan": "扫码",
+    "batch": "批量",
+    "about": "关于"
+  },
+  "generate": {
+    "title": "二维码生成",
+    "description": "支持 URL/文本、Wi‑Fi、电话、邮件、短信、地理坐标、vCard。所有生成在本地完成（不上传内容）。",
+    "contentType": "内容类型",
+    "types": {
+      "text": "URL / 文本",
+      "wifi": "Wi-Fi",
+      "tel": "电话",
+      "email": "邮件",
+      "sms": "短信",
+      "geo": "地理坐标",
+      "vcard": "vCard 名片"
+    },
+    "encodedContent": "最终内容（会编码进二维码）",
+    "manualOverride": "手动覆盖最终内容",
+    "copyContent": "复制内容",
+    "advancedOptions": "高级选项",
+    "ecc": "纠错等级（ECC）",
+    "eccOptions": {
+      "M": "M（推荐）",
+      "L": "L（更大容量）",
+      "Q": "Q（更强纠错）",
+      "H": "H（最强纠错）"
+    },
+    "version": "版本（1-40，0=自动）",
+    "scale": "像素密度（每格 px）",
+    "quiet": "静区（四周留白，格）",
+    "fgColor": "前景色",
+    "bgColor": "背景色",
+    "centerLogo": "中心 Logo（可选）",
+    "uploadImage": "上传图片",
+    "logoHint": "建议透明 PNG；Logo 过大会降低识别率。",
+    "logoSize": "Logo 大小（占宽度比例）",
+    "logoWhiteBg": "Logo 下方自动铺白底",
+    "downloadSvg": "下载 SVG",
+    "downloadPng": "下载 PNG",
+    "print": "打印",
+    "preview": "预览",
+    "tip": "提示：如果你需要让二维码更抗污损，可以选择更高 ECC，并降低 Logo 比例。"
+  },
+  "scan": {
+    "title": "扫码识别",
+    "description": "支持摄像头实时扫码与图片文件识别（需浏览器支持 BarcodeDetector）。",
+    "camera": "摄像头",
+    "start": "开始",
+    "stop": "停止",
+    "scanImage": "识别图片",
+    "scanImageHint": "选择一张包含二维码的图片进行识别。",
+    "statusNotStarted": "状态：未开始",
+    "statusRunning": "状态：正在扫码…",
+    "scanResult": "识别结果",
+    "copyResult": "复制结果",
+    "openLink": "打开链接",
+    "errorNotSupported": "您的浏览器不支持 BarcodeDetector。请使用 Chrome、Edge 或 Safari。",
+    "errorNoCode": "图片中未检测到二维码。"
+  },
+  "batch": {
+    "title": "批量生成与打印",
+    "description": "把多行内容粘贴进来，一次生成一整页二维码，适合贴纸/清单打印。",
+    "inputHint": "每行一个（可选：用逗号分隔"标签,内容"）",
+    "inputPlaceholder": "示例：\n官网,https://example.com\nWiFi,WIFI:T:WPA;S:MyWifi;P:12345678;;\n",
+    "batchOptions": "批量选项",
+    "ecc": "ECC",
+    "quiet": "静区（格）",
+    "columns": "列数",
+    "cellSize": "单格尺寸（px）",
+    "generatePreview": "生成预览",
+    "print": "打印",
+    "preview": "批量预览",
+    "printTip": "打印建议：在浏览器打印对话框里选择"背景图形（Background graphics）"以获得更一致的效果。"
+  },
+  "about": {
+    "title": "关于这个项目",
+    "description": "这个小工具来自一个产品思路：先用公开数据验证需求强度，再围绕用户意图做一个可运行的最小产品。",
+    "keywordDemand": "关键词与需求",
+    "keywordDemandText": "本项目选的词是 <kbd>qr code generator</kbd>，属于典型的"工具型强需求"搜索。关键词数据与分析见 <kbd>KEYWORD.md</kbd>。",
+    "privacy": "隐私",
+    "privacyText": "生成与识别都在浏览器本地执行。扫码功能依赖浏览器内置的 BarcodeDetector（支持情况因浏览器而异）。",
+    "offlineMode": "离线说明",
+    "offlineModeText": "默认会从公开 CDN 动态加载二维码生成引擎（便于保持仓库极简）。如果你需要完全离线运行，可以把依赖下载到 <kbd>src/vendor/</kbd>，应用会优先加载本地文件。"
+  },
+  "common": {
+    "copied": "已复制！",
+    "generating": "生成中…",
+    "error": "错误",
+    "success": "成功"
+  }
+}

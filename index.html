@@ -21,26 +21,32 @@
     <header class="site-header">
       <div class="container header-inner">
         <div class="brand">
-          <div class="brand-title">QR Code Toolkit</div>
+          <div class="brand-title" data-i18n="site.title">QR Code Toolkit</div>
           <div class="brand-subtitle">
-            Generate · Scan · Print QR Codes
-            <span id="qrLibStatus" class="pill pill--muted" aria-live="polite">QR Engine: Loading…</span>
+            <span data-i18n="site.subtitle">Generate · Scan · Print QR Codes</span>
+            <span id="qrLibStatus" class="pill pill--muted" aria-live="polite" data-i18n="site.engineLoading">QR Engine: Loading…</span>
           </div>
         </div>
-        <nav class="tabs" aria-label="功能切换">
-          <button class="tab is-active" type="button" data-tab="generate">Generate</button>
-          <button class="tab" type="button" data-tab="scan">Scan</button>
-          <button class="tab" type="button" data-tab="batch">Batch</button>
-          <button class="tab" type="button" data-tab="about">About</button>
-        </nav>
+        <div class="header-right">
+          <nav class="tabs" aria-label="功能切换">
+            <button class="tab is-active" type="button" data-tab="generate" data-i18n="tabs.generate">Generate</button>
+            <button class="tab" type="button" data-tab="scan" data-i18n="tabs.scan">Scan</button>
+            <button class="tab" type="button" data-tab="batch" data-i18n="tabs.batch">Batch</button>
+            <button class="tab" type="button" data-tab="about" data-i18n="tabs.about">About</button>
+          </nav>
+          <div class="lang-switch">
+            <button class="lang-btn" type="button" data-lang="en" title="English">EN</button>
+            <button class="lang-btn" type="button" data-lang="zh" title="中文">中文</button>
+          </div>
+        </div>
       </div>
     </header>
 
     <main class="container">
       <section class="panel tab-panel is-active" id="tab-generate" aria-labelledby="heading-generate">
         <div class="panel-header">
-          <h1 class="h1" id="heading-generate">QR Code Generator</h1>
-          <p class="muted">
+          <h1 class="h1" id="heading-generate" data-i18n="generate.title">QR Code Generator</h1>
+          <p class="muted" data-i18n="generate.description">
             Create QR codes for URLs, Wi-Fi, contacts, and more. All processing happens locally in your browser—no data uploads.
           </p>
         </div>
@@ -49,92 +55,92 @@
           <div class="stack">
             <form id="genForm" class="stack" autocomplete="off">
               <div class="field">
-                <label for="genType">Content Type</label>
+                <label for="genType" data-i18n="generate.contentType">Content Type</label>
                 <select id="genType" name="genType">
-                  <option value="text" selected>URL / Text</option>
-                  <option value="wifi">Wi-Fi</option>
-                  <option value="tel">Phone</option>
-                  <option value="email">Email</option>
-                  <option value="sms">SMS</option>
-                  <option value="geo">Geo Location</option>
-                  <option value="vcard">vCard Contact</option>
+                  <option value="text" selected data-i18n="generate.types.text">URL / Text</option>
+                  <option value="wifi" data-i18n="generate.types.wifi">Wi-Fi</option>
+                  <option value="tel" data-i18n="generate.types.tel">Phone</option>
+                  <option value="email" data-i18n="generate.types.email">Email</option>
+                  <option value="sms" data-i18n="generate.types.sms">SMS</option>
+                  <option value="geo" data-i18n="generate.types.geo">Geo Location</option>
+                  <option value="vcard" data-i18n="generate.types.vcard">vCard Contact</option>
                 </select>
               </div>
 
               <div id="typeFields" class="stack"></div>
 
               <div class="field">
-                <label for="payload">Encoded Content (will be put into QR code)</label>
+                <label for="payload" data-i18n="generate.encodedContent">Encoded Content (will be put into QR code)</label>
                 <textarea id="payload" name="payload" rows="4" spellcheck="false" readonly></textarea>
                 <label class="checkbox">
                   <input id="payloadOverride" type="checkbox" />
-                  <span>Manually override content</span>
+                  <span data-i18n="generate.manualOverride">Manually override content</span>
                 </label>
                 <div class="row row--space">
-                  <button class="btn btn--secondary" type="button" id="copyPayload">Copy</button>
+                  <button class="btn btn--secondary" type="button" id="copyPayload" data-i18n="generate.copyContent">Copy</button>
                   <div class="hint muted" id="payloadHint"></div>
                 </div>
               </div>
 
               <details class="details" open>
-                <summary>Advanced Options</summary>
+                <summary data-i18n="generate.advancedOptions">Advanced Options</summary>
                 <div class="grid-2">
                   <div class="field">
-                    <label for="ecc">Error Correction Level (ECC)</label>
+                    <label for="ecc" data-i18n="generate.ecc">Error Correction Level (ECC)</label>
                     <select id="ecc" name="ecc">
-                      <option value="M" selected>M (Recommended)</option>
-                      <option value="L">L (Larger capacity)</option>
-                      <option value="Q">Q (Stronger error correction)</option>
-                      <option value="H">H (Strongest error correction)</option>
+                      <option value="M" selected data-i18n="generate.eccOptions.M">M (Recommended)</option>
+                      <option value="L" data-i18n="generate.eccOptions.L">L (Larger capacity)</option>
+                      <option value="Q" data-i18n="generate.eccOptions.Q">Q (Stronger error correction)</option>
+                      <option value="H" data-i18n="generate.eccOptions.H">H (Strongest error correction)</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label for="version">Version (1-40, 0=Auto)</label>
+                    <label for="version" data-i18n="generate.version">Version (1-40, 0=Auto)</label>
                     <input id="version" name="version" type="number" min="0" max="40" value="0" />
                   </div>
                   <div class="field">
-                    <label for="scale">Scale (pixels per module)</label>
+                    <label for="scale" data-i18n="generate.scale">Scale (pixels per module)</label>
                     <input id="scale" name="scale" type="number" min="2" max="40" value="10" />
                   </div>
                   <div class="field">
-                    <label for="quiet">Quiet zone (modules around QR)</label>
+                    <label for="quiet" data-i18n="generate.quiet">Quiet zone (modules around QR)</label>
                     <input id="quiet" name="quiet" type="number" min="0" max="12" value="4" />
                   </div>
                   <div class="field">
-                    <label for="fg">Foreground color</label>
+                    <label for="fg" data-i18n="generate.fgColor">Foreground color</label>
                     <input id="fg" name="fg" type="color" value="#0b1220" />
                   </div>
                   <div class="field">
-                    <label for="bg">Background color</label>
+                    <label for="bg" data-i18n="generate.bgColor">Background color</label>
                     <input id="bg" name="bg" type="color" value="#ffffff" />
                   </div>
                 </div>
               </details>
 
               <details class="details">
-                <summary>Center Logo (Optional)</summary>
+                <summary data-i18n="generate.centerLogo">Center Logo (Optional)</summary>
                 <div class="grid-2">
                   <div class="field">
-                    <label for="logoFile">Upload image</label>
+                    <label for="logoFile" data-i18n="generate.uploadImage">Upload image</label>
                     <input id="logoFile" name="logoFile" type="file" accept="image/*" />
-                    <div class="hint muted">Transparent PNG recommended; large logos reduce scannability.</div>
+                    <div class="hint muted" data-i18n="generate.logoHint">Transparent PNG recommended; large logos reduce scannability.</div>
                   </div>
                   <div class="field">
-                    <label for="logoSize">Logo size (width ratio)</label>
+                    <label for="logoSize" data-i18n="generate.logoSize">Logo size (width ratio)</label>
                     <input id="logoSize" name="logoSize" type="range" min="0" max="0.35" step="0.01" value="0" />
                     <div class="hint muted"><span id="logoSizeLabel">0%</span></div>
                   </div>
                 </div>
                 <label class="checkbox">
                   <input id="logoWhiteBg" type="checkbox" checked />
-                  <span>Add white background under logo</span>
+                  <span data-i18n="generate.logoWhiteBg">Add white background under logo</span>
                 </label>
               </details>
 
               <div class="row">
-                <button class="btn" type="button" id="downloadSvg">Download SVG</button>
-                <button class="btn btn--secondary" type="button" id="downloadPng">Download PNG</button>
-                <button class="btn btn--ghost" type="button" id="printSingle">Print</button>
+                <button class="btn" type="button" id="downloadSvg" data-i18n="generate.downloadSvg">Download SVG</button>
+                <button class="btn btn--secondary" type="button" id="downloadPng" data-i18n="generate.downloadPng">Download PNG</button>
+                <button class="btn btn--ghost" type="button" id="printSingle" data-i18n="generate.print">Print</button>
               </div>
 
               <div class="callout" id="genError" hidden></div>
@@ -144,7 +150,7 @@
           <div class="stack">
             <div class="preview-card">
               <div class="preview-header">
-                <div class="preview-title">Preview</div>
+                <div class="preview-title" data-i18n="generate.preview">Preview</div>
                 <div class="preview-meta muted" id="qrMeta">-</div>
               </div>
               <div class="preview-body">
@@ -152,7 +158,7 @@
                 <canvas id="qrCanvas" class="qr-canvas" hidden></canvas>
               </div>
             </div>
-            <div class="hint muted">
+            <div class="hint muted" data-i18n="generate.tip">
               Tip: For better scannability with damage/dirt, choose higher ECC and reduce logo size.
             </div>
           </div>
@@ -161,36 +167,36 @@
 
       <section class="panel tab-panel" id="tab-scan" aria-labelledby="heading-scan">
         <div class="panel-header">
-          <h1 class="h1" id="heading-scan">QR Code Scanner</h1>
-          <p class="muted">Scan QR codes via camera or image files (requires browser BarcodeDetector support).</p>
+          <h1 class="h1" id="heading-scan" data-i18n="scan.title">QR Code Scanner</h1>
+          <p class="muted" data-i18n="scan.description">Scan QR codes via camera or image files (requires browser BarcodeDetector support).</p>
         </div>
 
         <div class="grid-2">
           <div class="stack">
             <div class="row row--space">
-              <div class="preview-title">Camera</div>
+              <div class="preview-title" data-i18n="scan.camera">Camera</div>
               <div class="row">
-                <button class="btn" type="button" id="startScan">Start</button>
-                <button class="btn btn--secondary" type="button" id="stopScan" disabled>Stop</button>
+                <button class="btn" type="button" id="startScan" data-i18n="scan.start">Start</button>
+                <button class="btn btn--secondary" type="button" id="stopScan" disabled data-i18n="scan.stop">Stop</button>
               </div>
             </div>
             <video id="scanVideo" class="video" playsinline muted></video>
-            <div class="hint muted" id="scanStatus" aria-live="polite">Status: Not started</div>
+            <div class="hint muted" id="scanStatus" aria-live="polite" data-i18n="scan.statusNotStarted">Status: Not started</div>
           </div>
 
           <div class="stack">
-            <div class="preview-title">Scan Image</div>
+            <div class="preview-title" data-i18n="scan.scanImage">Scan Image</div>
             <input id="scanFile" type="file" accept="image/*" />
-            <div class="hint muted">Select an image file containing a QR code to scan.</div>
+            <div class="hint muted" data-i18n="scan.scanImageHint">Select an image file containing a QR code to scan.</div>
           </div>
         </div>
 
         <div class="field">
-          <label for="scanResult">Scan Result</label>
+          <label for="scanResult" data-i18n="scan.scanResult">Scan Result</label>
           <textarea id="scanResult" rows="5" spellcheck="false" readonly></textarea>
           <div class="row">
-            <button class="btn btn--secondary" type="button" id="copyScan">Copy Result</button>
-            <a class="btn btn--ghost" id="openScan" href="#" target="_blank" rel="noreferrer" hidden>Open Link</a>
+            <button class="btn btn--secondary" type="button" id="copyScan" data-i18n="scan.copyResult">Copy Result</button>
+            <a class="btn btn--ghost" id="openScan" href="#" target="_blank" rel="noreferrer" hidden data-i18n="scan.openLink">Open Link</a>
           </div>
           <div class="callout" id="scanError" hidden></div>
         </div>
@@ -198,21 +204,21 @@
 
       <section class="panel tab-panel" id="tab-batch" aria-labelledby="heading-batch">
         <div class="panel-header">
-          <h1 class="h1" id="heading-batch">Batch Generate & Print</h1>
-          <p class="muted">Paste multiple lines to generate a full page of QR codes, perfect for stickers or lists.</p>
+          <h1 class="h1" id="heading-batch" data-i18n="batch.title">Batch Generate & Print</h1>
+          <p class="muted" data-i18n="batch.description">Paste multiple lines to generate a full page of QR codes, perfect for stickers or lists.</p>
         </div>
 
         <div class="grid-2">
           <div class="stack">
             <div class="field">
-              <label for="batchInput">One per line (optional: use comma "label,content")</label>
-              <textarea id="batchInput" rows="10" spellcheck="false" placeholder="Example:\nWebsite,https://example.com\nWiFi,WIFI:T:WPA;S:MyWifi;P:12345678;;\n"></textarea>
+              <label for="batchInput" data-i18n="batch.inputHint">One per line (optional: use comma "label,content")</label>
+              <textarea id="batchInput" rows="10" spellcheck="false" data-i18n-placeholder="batch.inputPlaceholder" placeholder="Example:\nWebsite,https://example.com\nWiFi,WIFI:T:WPA;S:MyWifi;P:12345678;;\n"></textarea>
             </div>
             <details class="details" open>
-              <summary>Batch Options</summary>
+              <summary data-i18n="batch.batchOptions">Batch Options</summary>
               <div class="grid-2">
                 <div class="field">
-                  <label for="batchEcc">ECC</label>
+                  <label for="batchEcc" data-i18n="batch.ecc">ECC</label>
                   <select id="batchEcc">
                     <option value="M" selected>M</option>
                     <option value="L">L</option>
@@ -221,22 +227,22 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label for="batchQuiet">Quiet zone (modules)</label>
+                  <label for="batchQuiet" data-i18n="batch.quiet">Quiet zone (modules)</label>
                   <input id="batchQuiet" type="number" min="0" max="12" value="4" />
                 </div>
                 <div class="field">
-                  <label for="batchCols">Columns</label>
+                  <label for="batchCols" data-i18n="batch.columns">Columns</label>
                   <input id="batchCols" type="number" min="2" max="8" value="4" />
                 </div>
                 <div class="field">
-                  <label for="batchCell">Cell size (px)</label>
+                  <label for="batchCell" data-i18n="batch.cellSize">Cell size (px)</label>
                   <input id="batchCell" type="number" min="2" max="20" value="6" />
                 </div>
               </div>
             </details>
             <div class="row">
-              <button class="btn" type="button" id="batchBuild">Generate Preview</button>
-              <button class="btn btn--ghost" type="button" id="batchPrint" disabled>Print</button>
+              <button class="btn" type="button" id="batchBuild" data-i18n="batch.generatePreview">Generate Preview</button>
+              <button class="btn btn--ghost" type="button" id="batchPrint" disabled data-i18n="batch.print">Print</button>
               <div class="hint muted" id="batchHint"></div>
             </div>
             <div class="callout" id="batchError" hidden></div>
@@ -245,14 +251,14 @@
           <div class="stack">
             <div class="preview-card">
               <div class="preview-header">
-                <div class="preview-title">Batch Preview</div>
+                <div class="preview-title" data-i18n="batch.preview">Batch Preview</div>
                 <div class="preview-meta muted" id="batchMeta">-</div>
               </div>
               <div class="preview-body">
                 <div id="batchGrid" class="batch-grid" aria-label="Batch QR code preview"></div>
               </div>
             </div>
-            <div class="hint muted">
+            <div class="hint muted" data-i18n="batch.printTip">
               Print tip: Enable "Background graphics" in browser print dialog for consistent results.
             </div>
           </div>
@@ -261,26 +267,26 @@
 
       <section class="panel tab-panel" id="tab-about" aria-labelledby="heading-about">
         <div class="panel-header">
-          <h1 class="h1" id="heading-about">About This Project</h1>
-          <p class="muted">
+          <h1 class="h1" id="heading-about" data-i18n="about.title">About This Project</h1>
+          <p class="muted" data-i18n="about.description">
             This tool was built with a product mindset: validate demand with public data first, then build a functional MVP around user intent.
           </p>
         </div>
 
         <div class="prose">
-          <h2>Keyword & Demand</h2>
-          <p>
-            This project targets the keyword <span class="kbd">qr code generator</span>, a classic "tool-type strong intent" search query.
-            See <span class="kbd">KEYWORD.md</span> for data and analysis.
+          <h2 data-i18n="about.keywordDemand">Keyword & Demand</h2>
+          <p data-i18n="about.keywordDemandText">
+            This project targets the keyword <kbd>qr code generator</kbd>, a classic "tool-type strong intent" search query.
+            See <kbd>KEYWORD.md</kbd> for data and analysis.
           </p>
-          <h2>Privacy</h2>
-          <p>
+          <h2 data-i18n="about.privacy">Privacy</h2>
+          <p data-i18n="about.privacyText">
             All generation and scanning happens locally in your browser. Scanning uses the browser's built-in BarcodeDetector (support varies by browser).
           </p>
-          <h2>Offline Mode</h2>
-          <p>
+          <h2 data-i18n="about.offlineMode">Offline Mode</h2>
+          <p data-i18n="about.offlineModeText">
             By default, the QR generation engine loads from a public CDN (to keep the repo lightweight). For completely offline use, download the dependency to
-            <span class="kbd">src/vendor/</span> and the app will load it locally first.
+            <kbd>src/vendor/</kbd> and the app will load it locally first.
           </p>
         </div>
       </section>
@@ -292,10 +298,11 @@
 
     <footer class="site-footer">
       <div class="container muted">
-        <span>QR Code Toolkit · Runs Locally</span>
+        <span data-i18n="site.footer">QR Code Toolkit · Runs Locally</span>
       </div>
     </footer>
 
+    <script src="./src/i18n.js"></script>
     <script type="module" src="./src/app.mjs"></script>
   </body>
 </html>

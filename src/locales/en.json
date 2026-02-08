@@ -1,0 +1,102 @@
+{
+  "site": {
+    "title": "QR Code Toolkit",
+    "subtitle": "Generate · Scan · Print QR Codes",
+    "engineLoading": "QR Engine: Loading…",
+    "engineReady": "QR Engine: Ready",
+    "footer": "QR Code Toolkit · Runs Locally"
+  },
+  "tabs": {
+    "generate": "Generate",
+    "scan": "Scan",
+    "batch": "Batch",
+    "about": "About"
+  },
+  "generate": {
+    "title": "QR Code Generator",
+    "description": "Create QR codes for URLs, Wi-Fi, contacts, and more. All processing happens locally in your browser—no data uploads.",
+    "contentType": "Content Type",
+    "types": {
+      "text": "URL / Text",
+      "wifi": "Wi-Fi",
+      "tel": "Phone",
+      "email": "Email",
+      "sms": "SMS",
+      "geo": "Geo Location",
+      "vcard": "vCard Contact"
+    },
+    "encodedContent": "Encoded Content (will be put into QR code)",
+    "manualOverride": "Manually override content",
+    "copyContent": "Copy",
+    "advancedOptions": "Advanced Options",
+    "ecc": "Error Correction Level (ECC)",
+    "eccOptions": {
+      "M": "M (Recommended)",
+      "L": "L (Larger capacity)",
+      "Q": "Q (Stronger error correction)",
+      "H": "H (Strongest error correction)"
+    },
+    "version": "Version (1-40, 0=Auto)",
+    "scale": "Scale (pixels per module)",
+    "quiet": "Quiet zone (modules around QR)",
+    "fgColor": "Foreground color",
+    "bgColor": "Background color",
+    "centerLogo": "Center Logo (Optional)",
+    "uploadImage": "Upload image",
+    "logoHint": "Transparent PNG recommended; large logos reduce scannability.",
+    "logoSize": "Logo size (width ratio)",
+    "logoWhiteBg": "Add white background under logo",
+    "downloadSvg": "Download SVG",
+    "downloadPng": "Download PNG",
+    "print": "Print",
+    "preview": "Preview",
+    "tip": "Tip: For better scannability with damage/dirt, choose higher ECC and reduce logo size."
+  },
+  "scan": {
+    "title": "QR Code Scanner",
+    "description": "Scan QR codes via camera or image files (requires browser BarcodeDetector support).",
+    "camera": "Camera",
+    "start": "Start",
+    "stop": "Stop",
+    "scanImage": "Scan Image",
+    "scanImageHint": "Select an image file containing a QR code to scan.",
+    "statusNotStarted": "Status: Not started",
+    "statusRunning": "Status: Scanning…",
+    "scanResult": "Scan Result",
+    "copyResult": "Copy Result",
+    "openLink": "Open Link",
+    "errorNotSupported": "Your browser doesn't support BarcodeDetector. Please use Chrome, Edge, or Safari.",
+    "errorNoCode": "No QR code detected in the image."
+  },
+  "batch": {
+    "title": "Batch Generate & Print",
+    "description": "Paste multiple lines to generate a full page of QR codes, perfect for stickers or lists.",
+    "inputHint": "One per line (optional: use comma \"label,content\")",
+    "inputPlaceholder": "Example:\nWebsite,https://example.com\nWiFi,WIFI:T:WPA;S:MyWifi;P:12345678;;\n",
+    "batchOptions": "Batch Options",
+    "ecc": "ECC",
+    "quiet": "Quiet zone (modules)",
+    "columns": "Columns",
+    "cellSize": "Cell size (px)",
+    "generatePreview": "Generate Preview",
+    "print": "Print",
+    "preview": "Batch Preview",
+    "printTip": "Print tip: Enable \"Background graphics\" in browser print dialog for consistent results."
+  },
+  "about": {
+    "title": "About This Project",
+    "description": "This tool was built with a product mindset: validate demand with public data first, then build a functional MVP around user intent.",
+    "keywordDemand": "Keyword & Demand",
+    "keywordDemandText": "This project targets the keyword <kbd>qr code generator</kbd>, a classic \"tool-type strong intent\" search query. See <kbd>KEYWORD.md</kbd> for data and analysis.",
+    "privacy": "Privacy",
+    "privacyText": "All generation and scanning happens locally in your browser. Scanning uses the browser's built-in BarcodeDetector (support varies by browser).",
+    "offlineMode": "Offline Mode",
+    "offlineModeText": "By default, the QR generation engine loads from a public CDN (to keep the repo lightweight). For completely offline use, download the dependency to <kbd>src/vendor/</kbd> and the app will load it locally first."
+  },
+  "common": {
+    "copied": "Copied!",
+    "generating": "Generating…",
+    "error": "Error",
+    "success": "Success"
+  }
+}
