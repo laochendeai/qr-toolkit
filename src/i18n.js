@@ -101,7 +101,41 @@
       "merge.modeDescription": "Selection mode creates a page where users choose which QR to scan. Grid mode shows all QRs in one image.",
       "merge.errorNoCodes": "Please upload at least 2 QR code images.",
       "merge.errorInvalidImage": "Invalid image file. Please upload QR code images.",
-      "merge.qrLabels": "QR Code Labels"
+      "merge.qrLabels": "QR Code Labels",
+      "wifi.security": "Security",
+      "wifi.wpa": "WPA/WPA2",
+      "wifi.wep": "WEP",
+      "wifi.nopass": "No Password",
+      "wifi.hidden": "Hidden Network (H)",
+      "wifi.ssid": "Wi-Fi Name (SSID)",
+      "wifi.password": "Password",
+      "text.label": "URL / Text",
+      "text.placeholder": "e.g., https://example.com or any text",
+      "tel.label": "Phone Number",
+      "tel.placeholder": "+86...",
+      "email.to": "Recipient",
+      "email.toPlaceholder": "name@example.com",
+      "email.subject": "Subject (Optional)",
+      "email.body": "Body (Optional)",
+      "sms.to": "Recipient Phone Number",
+      "sms.body": "SMS Content (Optional)",
+      "geo.lat": "Latitude (lat)",
+      "geo.lng": "Longitude (lng)",
+      "geo.latPlaceholder": "31.2304",
+      "geo.lngPlaceholder": "121.4737",
+      "geo.query": "Query (Optional)",
+      "geo.queryPlaceholder": "e.g., coffee shop",
+      "vcard.name": "Name (FN)",
+      "vcard.org": "Organization (ORG)",
+      "vcard.title": "Title (TITLE)",
+      "vcard.tel": "Phone (TEL)",
+      "vcard.email": "Email (EMAIL)",
+      "vcard.url": "Website (URL)",
+      "vcard.adr": "Address (ADR, Optional)",
+      "vcard.note": "Note (NOTE, Optional)",
+      "generate.enterContent": "Please enter content to generate QR code",
+      "generate.failed": "Generation failed",
+      "batch.noContent": "Please enter at least one line"
     },
     zh: {
       "site.title": "QR 工具箱",
@@ -202,7 +236,41 @@
       "merge.modeDescription": "选择页模式会创建一个页面，用户可以选择要扫描的二维码。网格模式会在一张图中显示所有二维码。",
       "merge.errorNoCodes": "请至少上传 2 个二维码图片。",
       "merge.errorInvalidImage": "无效的图片文件。请上传二维码图片。",
-      "merge.qrLabels": "二维码标签"
+      "merge.qrLabels": "二维码标签",
+      "wifi.security": "加密方式",
+      "wifi.wpa": "WPA/WPA2",
+      "wifi.wep": "WEP",
+      "wifi.nopass": "无密码",
+      "wifi.hidden": "隐藏网络（H）",
+      "wifi.ssid": "Wi-Fi 名称（SSID）",
+      "wifi.password": "密码",
+      "text.label": "URL / 文本",
+      "text.placeholder": "例如：https://example.com 或任意文本",
+      "tel.label": "电话号码",
+      "tel.placeholder": "+86...",
+      "email.to": "收件人",
+      "email.toPlaceholder": "name@example.com",
+      "email.subject": "主题（可选）",
+      "email.body": "正文（可选）",
+      "sms.to": "收件人手机号",
+      "sms.body": "短信内容（可选）",
+      "geo.lat": "纬度（lat）",
+      "geo.lng": "经度（lng）",
+      "geo.latPlaceholder": "31.2304",
+      "geo.lngPlaceholder": "121.4737",
+      "geo.query": "查询（可选）",
+      "geo.queryPlaceholder": "比如：咖啡店",
+      "vcard.name": "姓名（FN）",
+      "vcard.org": "组织（ORG）",
+      "vcard.title": "职位（TITLE）",
+      "vcard.tel": "电话（TEL）",
+      "vcard.email": "邮箱（EMAIL）",
+      "vcard.url": "网址（URL）",
+      "vcard.adr": "地址（ADR，可选）",
+      "vcard.note": "备注（NOTE，可选）",
+      "generate.enterContent": "请输入内容以生成二维码",
+      "generate.failed": "生成失败",
+      "batch.noContent": "请至少输入一行"
     }
   };
 
@@ -235,6 +303,10 @@
     updatePage(lang);
     updateLanguageButtons(lang);
     updateDocumentLang(lang);
+
+    // 触发自定义事件，让其他模块知道语言变化
+    const event = new CustomEvent('i18n-changed', { detail: { lang } });
+    window.dispatchEvent(event);
   }
 
   // 更新页面

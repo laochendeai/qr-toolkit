@@ -1,5 +1,48 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 
+function getI18n(key) {
+  if (window.i18n && window.i18n.getTranslation) {
+    return window.i18n.getTranslation(key, 'en');
+  }
+  // Fallback English translations
+  const fallbacks = {
+    'wifi.security': 'Security',
+    'wifi.wpa': 'WPA/WPA2',
+    'wifi.wep': 'WEP',
+    'wifi.nopass': 'No Password',
+    'wifi.hidden': 'Hidden Network (H)',
+    'wifi.ssid': 'Wi-Fi Name (SSID)',
+    'wifi.password': 'Password',
+    'tel.label': 'Phone Number',
+    'tel.placeholder': '+86...',
+    'email.to': 'Recipient',
+    'email.toPlaceholder': 'name@example.com',
+    'email.subject': 'Subject (Optional)',
+    'email.body': 'Body (Optional)',
+    'sms.to': 'Recipient Phone Number',
+    'sms.body': 'SMS Content (Optional)',
+    'geo.lat': 'Latitude (lat)',
+    'geo.lng': 'Longitude (lng)',
+    'geo.latPlaceholder': '31.2304',
+    'geo.lngPlaceholder': '121.4737',
+    'geo.query': 'Query (Optional)',
+    'geo.queryPlaceholder': 'e.g., coffee shop',
+    'vcard.name': 'Name (FN)',
+    'vcard.org': 'Organization (ORG)',
+    'vcard.title': 'Title (TITLE)',
+    'vcard.tel': 'Phone (TEL)',
+    'vcard.email': 'Email (EMAIL)',
+    'vcard.url': 'Website (URL)',
+    'vcard.adr': 'Address (ADR, Optional)',
+    'vcard.note': 'Note (NOTE, Optional)',
+    'text.placeholder': 'e.g., https://example.com or any text',
+    'generate.enterContent': 'Please enter content to generate QR code',
+    'generate.failed': 'Generation failed',
+    'batch.noContent': 'Please enter at least one line'
+  };
+  return fallbacks[key] || key;
+}
+
 function setText(el, text) {
   el.textContent = String(text ?? "");
 }
@@ -341,9 +384,9 @@ function mountTypeFields(container, type) {
     container.append(
       mkTextarea({
         id: "text",
-        label: "URL / 文本",
+        label: getI18n("text.label"),
         rows: 5,
-        placeholder: "例如：https://example.com 或任意文本",
+        placeholder: getI18n("text.placeholder"),
       }),
     );
     return;
@@ -353,21 +396,21 @@ function mountTypeFields(container, type) {
     const grid = document.createElement("div");
     grid.className = "grid-2";
     grid.append(
-      mkInput({ id: "ssid", label: "Wi‑Fi 名称（SSID）" }),
-      mkInput({ id: "password", label: "密码", type: "password" }),
+      mkInput({ id: "ssid", label: getI18n("wifi.ssid") }),
+      mkInput({ id: "password", label: getI18n("wifi.password"), type: "password" }),
     );
     const security = document.createElement("div");
     security.className = "field";
     const lab = document.createElement("label");
     lab.setAttribute("for", "security");
-    lab.textContent = "加密方式";
+    lab.textContent = getI18n("wifi.security");
     const sel = document.createElement("select");
     sel.id = "security";
     sel.name = "security";
     sel.innerHTML = `
-      <option value="WPA" selected>WPA/WPA2</option>
-      <option value="WEP">WEP</option>
-      <option value="nopass">无密码</option>
+      <option value="WPA" selected>${getI18n("wifi.wpa")}</option>
+      <option value="WEP">${getI18n("wifi.wep")}</option>
+      <option value="nopass">${getI18n("wifi.nopass")}</option>
     `;
     security.append(lab, sel);
 
@@ -378,7 +421,7 @@ function mountTypeFields(container, type) {
     cb.id = "hidden";
     cb.name = "hidden";
     const span = document.createElement("span");
-    span.textContent = "隐藏网络（H）";
+    span.textContent = getI18n("wifi.hidden");
     hiddenWrap.append(cb, span);
 
     container.append(grid, security, hiddenWrap);
@@ -386,23 +429,23 @@ function mountTypeFields(container, type) {
   }
 
   if (type === "tel") {
-    container.append(mkInput({ id: "tel", label: "电话号码", placeholder: "+86..." }));
+    container.append(mkInput({ id: "tel", label: getI18n("tel.label"), placeholder: getI18n("tel.placeholder") }));
     return;
   }
 
   if (type === "email") {
     container.append(
-      mkInput({ id: "to", label: "收件人", placeholder: "name@example.com" }),
-      mkInput({ id: "subject", label: "主题（可选）" }),
-      mkTextarea({ id: "body", label: "正文（可选）", rows: 4 }),
+      mkInput({ id: "to", label: getI18n("email.to"), placeholder: getI18n("email.toPlaceholder") }),
+      mkInput({ id: "subject", label: getI18n("email.subject") }),
+      mkTextarea({ id: "body", label: getI18n("email.body"), rows: 4 }),
     );
     return;
   }
 
   if (type === "sms") {
     container.append(
-      mkInput({ id: "to", label: "收件人手机号" }),
-      mkTextarea({ id: "body", label: "短信内容（可选）", rows: 4 }),
+      mkInput({ id: "to", label: getI18n("sms.to") }),
+      mkTextarea({ id: "body", label: getI18n("sms.body"), rows: 4 }),
     );
     return;
   }
@@ -410,23 +453,23 @@ function mountTypeFields(container, type) {
   if (type === "geo") {
     const grid = document.createElement("div");
     grid.className = "grid-2";
-    grid.append(mkInput({ id: "lat", label: "纬度（lat）", placeholder: "31.2304" }), mkInput({ id: "lng", label: "经度（lng）", placeholder: "121.4737" }));
-    container.append(grid, mkInput({ id: "q", label: "查询（可选）", placeholder: "比如：咖啡店" }));
+    grid.append(mkInput({ id: "lat", label: getI18n("geo.lat"), placeholder: getI18n("geo.latPlaceholder") }), mkInput({ id: "lng", label: getI18n("geo.lng"), placeholder: getI18n("geo.lngPlaceholder") }));
+    container.append(grid, mkInput({ id: "q", label: getI18n("geo.query"), placeholder: getI18n("geo.queryPlaceholder") }));
     return;
   }
 
   if (type === "vcard") {
     const grid = document.createElement("div");
     grid.className = "grid-2";
-    grid.append(mkInput({ id: "name", label: "姓名（FN）" }), mkInput({ id: "org", label: "组织（ORG）" }));
+    grid.append(mkInput({ id: "name", label: getI18n("vcard.name") }), mkInput({ id: "org", label: getI18n("vcard.org") }));
     container.append(
       grid,
-      mkInput({ id: "title", label: "职位（TITLE）" }),
-      mkInput({ id: "tel", label: "电话（TEL）" }),
-      mkInput({ id: "email", label: "邮箱（EMAIL）" }),
-      mkInput({ id: "url", label: "网址（URL）" }),
-      mkTextarea({ id: "adr", label: "地址（ADR，可选）", rows: 2 }),
-      mkTextarea({ id: "note", label: "备注（NOTE，可选）", rows: 3 }),
+      mkInput({ id: "title", label: getI18n("vcard.title") }),
+      mkInput({ id: "tel", label: getI18n("vcard.tel") }),
+      mkInput({ id: "email", label: getI18n("vcard.email") }),
+      mkInput({ id: "url", label: getI18n("vcard.url") }),
+      mkTextarea({ id: "adr", label: getI18n("vcard.adr"), rows: 2 }),
+      mkTextarea({ id: "note", label: getI18n("vcard.note"), rows: 3 }),
     );
   }
 }
@@ -577,7 +620,7 @@ function initGenerator(qrcodeFactory) {
       renderQrToCanvas(qr, canvas, { scale: state.scale, quietZone: state.quiet, fg: state.fg, bg: state.bg });
       drawLogoOnCanvas(canvas, { imageBitmap: logoBitmap, ratio: state.logo.ratio, whiteBg: state.logo.whiteBg }).catch(() => {});
     } catch (err) {
-      qrPreview.innerHTML = `<div class="muted">生成失败</div>`;
+      qrPreview.innerHTML = `<div class="muted">${getI18n("generate.failed")}</div>;
       setText(qrMeta, "—");
       showCallout(errorEl, `生成失败：${err?.message || err}`);
     }
@@ -869,15 +912,30 @@ async function main() {
     const qrcodeFactory = await loadQrFactory();
     initGenerator(qrcodeFactory);
     initBatch(qrcodeFactory);
-    setText(status, "QR 引擎：就绪");
+    setText(status, getI18n("site.engineReady"));
   } catch (err) {
-    setText(status, "QR 引擎：不可用");
+    setText(status, getI18n("site.engineLoading") + " - Unavailable");
     status.classList.add("pill--muted");
     console.error(err);
-    showCallout($("#genError"), `二维码引擎加载失败。可能是离线或 CDN 不可达。\n\n错误：${err?.message || err}\n\n离线方案：下载 qrcode-generator 的 ESM 文件到 src/vendor/qrcode-generator.mjs`);
+    showCallout($("#genError"), `QR code engine failed to load. May be offline or CDN unreachable.\n\nError: ${err?.message || err}\n\nOffline solution: Download qrcode-generator ESM file to src/vendor/qrcode-generator.mjs`);
   }
 
   initScanner();
+
+  // 监听语言变化事件
+  window.addEventListener('i18n-changed', () => {
+    console.log('Language changed, re-rendering...');
+    // 重新触发当前 tab 的 render
+    const activeTab = document.querySelector('.tab.is-active');
+    if (activeTab) {
+      const tabId = activeTab.getAttribute('data-tab');
+      if (tabId === 'generate') {
+        render();
+      } else if (tabId === 'batch') {
+        buildBatchPreview();
+      }
+    }
+  });
 }
 
 main();
