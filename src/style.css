@@ -394,3 +394,66 @@ input[type="color"]{ padding: 4px 6px; height: 42px; }
   body[data-print="batch"] .batch-item{ border: 1px solid #ddd; background: white; }
   body[data-print="batch"] .batch-label{ color: #333; }
 }
+
+/* Merge Styles */
+.merge-list{
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  margin-bottom: 16px;
+}
+.merge-item{
+  background: var(--panel-2);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.merge-item-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.merge-item-remove{
+  background: var(--danger);
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.merge-item-remove:hover{
+  opacity: 0.9;
+}
+.merge-item-preview{
+  width: 100%;
+  aspect-ratio: 1;
+  background: white;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.merge-item-label{
+  font-size: 13px;
+  border: 1px solid var(--stroke);
+  background: var(--panel);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  width: 100%;
+}
+.merge-empty{
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  border: 2px dashed var(--stroke);
+  border-radius: var(--radius-sm);
+}
+@media (prefers-color-scheme: light){
+  .merge-item-preview{
+    background: #fff;
+    border: 1px solid #ddd;
+  }
+}

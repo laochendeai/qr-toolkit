@@ -30,6 +30,7 @@
         <div class="header-right">
           <nav class="tabs" aria-label="功能切换">
             <button class="tab is-active" type="button" data-tab="generate" data-i18n="tabs.generate">Generate</button>
+            <button class="tab" type="button" data-tab="merge" data-i18n="tabs.merge">Merge</button>
             <button class="tab" type="button" data-tab="scan" data-i18n="tabs.scan">Scan</button>
             <button class="tab" type="button" data-tab="batch" data-i18n="tabs.batch">Batch</button>
             <button class="tab" type="button" data-tab="about" data-i18n="tabs.about">About</button>
@@ -265,6 +266,53 @@
         </div>
       </section>
 
+      <section class="panel tab-panel" id="tab-merge" aria-labelledby="heading-merge">
+        <div class="panel-header">
+          <h1 class="h1" id="heading-merge" data-i18n="merge.title">QR Code Merger</h1>
+          <p class="muted" data-i18n="merge.description">Merge multiple QR codes into one. Perfect for combining WeChat and Alipay payment codes, or sharing multiple links at once.</p>
+        </div>
+
+        <div class="layout-2">
+          <div class="stack">
+            <div class="field">
+              <label data-i18n="merge.mergeMode">Merge Mode</label>
+              <select id="mergeMode">
+                <option value="selection" selected data-i18n="merge.modeSelection">Selection Page (Best for payments)</option>
+                <option value="grid" data-i18n="merge.modeGrid">Grid Layout (Best for sharing)</option>
+              </select>
+            </div>
+            <div class="hint muted" data-i18n="merge.modeDescription">Selection mode creates a page where users choose which QR to scan. Grid mode shows all QRs in one image.</div>
+
+            <div class="field">
+              <label data-i18n="merge.uploadCodes">Upload QR Codes</label>
+              <div id="mergeList" class="merge-list"></div>
+            </div>
+            <div class="hint muted" data-i18n="merge.uploadHint">Upload 2-4 QR code images to merge</div>
+
+            <button class="btn" type="button" id="addMergeCode" data-i18n="merge.addCode">Add QR Code</button>
+
+            <div class="row">
+              <button class="btn" type="button" id="generateMerge" disabled data-i18n="merge.generate">Generate Merged QR</button>
+              <button class="btn btn--secondary" type="button" id="downloadMergeSvg" disabled data-i18n="generate.downloadSvg">Download SVG</button>
+              <button class="btn btn--ghost" type="button" id="downloadMergePng" disabled data-i18n="generate.downloadPng">Download PNG</button>
+            </div>
+
+            <div class="callout" id="mergeError" hidden></div>
+          </div>
+
+          <div class="stack">
+            <div class="preview-card">
+              <div class="preview-header">
+                <div class="preview-title" data-i18n="merge.preview">Merged QR Preview</div>
+              </div>
+              <div class="preview-body">
+                <div id="mergePreview" class="qr-preview" role="img" aria-label="Merged QR code preview"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="panel tab-panel" id="tab-about" aria-labelledby="heading-about">
         <div class="panel-header">
           <h1 class="h1" id="heading-about" data-i18n="about.title">About This Project</h1>
@@ -303,6 +351,7 @@
     </footer>
 
     <script src="./src/i18n.js"></script>
+    <script type="module" src="./src/merge.mjs"></script>
     <script type="module" src="./src/app.mjs"></script>
   </body>
 </html>
