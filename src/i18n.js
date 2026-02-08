@@ -1,5 +1,6 @@
 // i18n.js - 国际化支持
 (function() {
+  // 翻译数据
   const translations = {
     en: {
       "site.title": "QR Code Toolkit",
@@ -205,6 +206,7 @@
     }
   };
 
+  // 检测语言
   function detectLanguage() {
     const saved = localStorage.getItem('qr-toolkit-lang');
     if (saved && translations[saved]) return saved;
@@ -214,7 +216,16 @@
     return 'en';
   }
 
+  // 获取翻译
+  function getTranslation(key, lang) {
+    if (!translations[lang]) return key;
+    if (!translations[lang][key]) return key;
+    return translations[lang][key];
+  }
+
+  // 设置语言
   function setLanguage(lang) {
+    console.log('setLanguage:', lang);
     if (!translations[lang]) {
       console.error('Language not supported:', lang);
       return;
@@ -224,45 +235,51 @@
     updatePage(lang);
     updateLanguageButtons(lang);
     updateDocumentLang(lang);
-    console.log('Language set to:', lang);
   }
 
-  function getTranslation(key, lang) {
-    return translations[lang][key] || key;
-  }
-
+  // 更新页面
   function updatePage(lang) {
+    console.log('updatePage:', lang);
+
     // 更新所有带有 data-i18n 属性的元素
-    document.querySelectorAll('[data-i18n]').forEach(el => {
+    const elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(el => {
       const key = el.getAttribute('data-i18n');
       const text = getTranslation(key, lang);
       el.textContent = text;
     });
 
     // 更新带有 data-i18n-placeholder 的元素的 placeholder
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const placeholderElements = document.querySelectorAll('[data-i18n-placeholder]');
+    placeholderElements.forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
       const text = getTranslation(key, lang);
       el.setAttribute('placeholder', text);
     });
 
     // 更新 select 选项
-    document.querySelectorAll('select option[data-i18n]').forEach(el => {
+    const optionElements = document.querySelectorAll('select option[data-i18n]');
+    optionElements.forEach(el => {
       const key = el.getAttribute('data-i18n');
       const text = getTranslation(key, lang);
       el.textContent = text;
     });
 
     // 更新 aria-label
-    document.querySelectorAll('[aria-label][data-i18n]').forEach(el => {
+    const ariaElements = document.querySelectorAll('[aria-label][data-i18n]');
+    ariaElements.forEach(el => {
       const key = el.getAttribute('data-i18n');
       const text = getTranslation(key, lang);
       el.setAttribute('aria-label', text);
     });
+
+    console.log('Updated', elements.length, 'text elements,', placeholderElements.length, 'placeholders,', optionElements.length, 'options,', ariaElements.length, 'aria-labels');
   }
 
+  // 更新语言按钮状态
   function updateLanguageButtons(lang) {
-    document.querySelectorAll('.lang-btn').forEach(btn => {
+    const buttons = document.querySelectorAll('.lang-btn');
+    buttons.forEach(btn => {
       const btnLang = btn.getAttribute('data-lang');
       if (btnLang === lang) {
         btn.classList.add('is-active');
@@ -272,33 +289,42 @@
     });
   }
 
+  // 更新文档语言
   function updateDocumentLang(lang) {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   }
 
   // 初始化
   function init() {
+    console.log('i18n.js initialized');
     const currentLang = detectLanguage();
+    console.log('Current language:', currentLang);
+
     updatePage(currentLang);
     updateLanguageButtons(currentLang);
     updateDocumentLang(currentLang);
 
     // 绑定语言切换按钮
-    document.querySelectorAll('.lang-btn').forEach(btn => {
+    const langButtons = document.querySelectorAll('.lang-btn');
+    langButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const lang = btn.getAttribute('data-lang');
+        console.log('Button clicked, switching to:', lang);
         setLanguage(lang);
       });
     });
 
-    console.log('i18n initialized with language:', currentLang);
+    console.log('Bound', langButtons.length, 'language buttons');
   }
 
   // 等待 DOM 加载完成
   if (document.readyState === 'loading') {
+    console.log('Waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', init);
   } else {
+    console.log('DOM already loaded, initializing now');
     init();
   }
 
