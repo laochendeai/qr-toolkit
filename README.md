@@ -1,6 +1,6 @@
 # QR 工具箱（QR Toolkit）
 
-围绕高搜索量关键词 **“qr code generator”** 做的一个本地可运行小工具：二维码生成 + 扫码识别 + 批量打印。
+围绕高搜索量关键词 **“qr code generator”** 做的一个本地可运行小工具：二维码生成 + 扫码识别 + 批量打印 + 二维码组合图。
 
 ## 功能
 
@@ -8,13 +8,14 @@
 - 导出：SVG / PNG
 - 扫码：摄像头实时识别、图片文件识别（依赖浏览器 `BarcodeDetector`）
 - 批量：多行内容一页生成，直接打印
+- 合并：上传 2-4 个二维码，生成一张组合图（适合收款码或多链接同时分享）
 
 ## 运行
 
 浏览器访问需要本地 HTTP 服务（摄像头权限在 `localhost` 才是安全上下文）。
 
 ```bash
-cd /path/to/jjgz
+cd /path/to/qr-toolkit
 python3 -m http.server 5173
 ```
 

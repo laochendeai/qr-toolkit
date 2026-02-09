@@ -1,347 +1,328 @@
-// merge.mjs - 二维码合并功能
+import { $, downloadBlob, showCallout } from "./core/dom.mjs";
+import { t, tf } from "./core/i18n.mjs";
 
-const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => root.querySelectorAll(selector);
+const MAX_CODES = 4;
+const GRID_COLS = 2;
 
 let mergeCodes = [];
-let qrcodeGenerator = null;
+let lastPreviewCanvas = null;
+let lastPreviewSvg = "";
 
-// 加载 QR 生成库
-async function loadQrLibrary() {
-  if (qrcodeGenerator) return qrcodeGenerator;
-
-  try {
-    // 尝试从本地加载
-    const response = await fetch('./src/vendor/qrcode-generator.mjs');
-    if (response.ok) {
-      const text = await response.text();
-      const blob = new Blob([text], { type: 'text/javascript' });
-      const url = URL.createObjectURL(blob);
-      const module = await import(url);
-      qrcodeGenerator = module.qrcode;
-      return qrcodeGenerator;
-    }
-  } catch (e) {
-    console.log('Local QR library not found, loading from CDN...');
-  }
-
-  // 从 CDN 加载
-  try {
-    const url = 'https://unpkg.com/qrcode-generator@2.0.4/dist/qrcode.mjs';
-    const response = await fetch(url);
-    const text = await response.text();
-    const blob = new Blob([text], { type: 'text/javascript' });
-    const moduleUrl = URL.createObjectURL(blob);
-    const module = await import(moduleUrl);
-    qrcodeGenerator = module.qrcode;
-    updateStatus('ready');
-    return qrcodeGenerator;
-  } catch (error) {
-    console.error('Failed to load QR library:', error);
-    throw error;
-  }
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
-function updateStatus(status) {
-  const statusEl = $('#qrLibStatus');
-  if (!statusEl) return;
-
-  if (status === 'ready') {
-    const i18nKey = window.i18n ? 'site.engineReady' : 'QR Engine: Ready';
-    statusEl.textContent = window.i18n ? window.i18n.getTranslation(i18nKey, 'en') : 'QR Engine: Ready';
-    statusEl.classList.remove('pill--muted');
-    statusEl.classList.add('pill--success');
-  }
-}
-
-// 读取图片文件
 function readImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
+    reader.onload = (event) => resolve(event.target.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-// 添加二维码
-async function addQrCode() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
+function getMergeErrorEl() {
+  return $("#mergeError");
+}
 
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
+function clearError() {
+  showCallout(getMergeErrorEl(), "");
+}
+
+function showError(message) {
+  showCallout(getMergeErrorEl(), message);
+}
+
+function ensureGridModeOnly() {
+  const modeSelect = $("#mergeMode");
+  if (!modeSelect) return;
+
+  modeSelect.innerHTML = `<option value="grid" selected>${t("merge.modeGrid")}</option>`;
+  modeSelect.disabled = true;
+
+  const modeHint = document.querySelector('[data-i18n="merge.modeDescription"]');
+  if (modeHint) {
+    modeHint.textContent = t("merge.modeDescription");
+  }
+}
+
+function updateButtons() {
+  const generateBtn = $("#generateMerge");
+  const downloadSvgBtn = $("#downloadMergeSvg");
+  const downloadPngBtn = $("#downloadMergePng");
+
+  const hasEnoughCodes = mergeCodes.length >= 2;
+  if (generateBtn) generateBtn.disabled = !hasEnoughCodes;
+  if (downloadSvgBtn) downloadSvgBtn.disabled = !lastPreviewSvg;
+  if (downloadPngBtn) downloadPngBtn.disabled = !lastPreviewCanvas;
+}
+
+function renderMergeList() {
+  const list = $("#mergeList");
+  if (!list) return;
+
+  if (!mergeCodes.length) {
+    list.innerHTML = `<div class="merge-empty">${t("merge.uploadHint")}</div>`;
+    return;
+  }
+
+  list.innerHTML = mergeCodes
+    .map((code, index) => {
+      const placeholder = escapeHtml(t("merge.labelPlaceholder"));
+      const label = escapeHtml(code.label);
+      const fallbackAlt = escapeHtml(tf("merge.labelFallback", { index: index + 1 }));
+      const removeText = escapeHtml(t("merge.removeCode", "Remove"));
+      return `
+        <div class="merge-item" data-id="${code.id}">
+          <div class="merge-item-header">
+            <input
+              type="text"
+              class="merge-item-label"
+              data-id="${code.id}"
+              placeholder="${placeholder}"
+              value="${label}"
+            >
+            <button type="button" class="merge-item-remove" data-remove-id="${code.id}">
+              ${removeText}
+            </button>
+          </div>
+          <img src="${code.data}" class="merge-item-preview" alt="${fallbackAlt}">
+        </div>
+      `;
+    })
+    .join("");
+
+  list.querySelectorAll(".merge-item-label").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const id = Number(event.currentTarget.getAttribute("data-id"));
+      const item = mergeCodes.find((entry) => entry.id === id);
+      if (item) item.label = event.currentTarget.value;
+    });
+  });
+
+  list.querySelectorAll(".merge-item-remove").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.getAttribute("data-remove-id"));
+      mergeCodes = mergeCodes.filter((entry) => entry.id !== id);
+      lastPreviewCanvas = null;
+      lastPreviewSvg = "";
+      renderMergeList();
+      updateButtons();
+    });
+  });
+}
+
+async function addQrCode() {
+  if (mergeCodes.length >= MAX_CODES) {
+    showError(t("merge.errorTooManyCodes"));
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+
+  input.onchange = async (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     try {
       const imageData = await readImage(file);
-      const qrCode = {
-        id: Date.now(),
+      mergeCodes.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
         data: imageData,
-        label: ''
-      };
-      mergeCodes.push(qrCode);
+        label: "",
+      });
+      if (mergeCodes.length > MAX_CODES) {
+        mergeCodes = mergeCodes.slice(0, MAX_CODES);
+      }
+
+      clearError();
+      lastPreviewCanvas = null;
+      lastPreviewSvg = "";
       renderMergeList();
       updateButtons();
-    } catch (error) {
-      showError(window.i18n ? window.i18n.getTranslation('merge.errorInvalidImage', 'en') : 'Invalid image file');
+    } catch {
+      showError(t("merge.errorInvalidImage"));
     }
   };
 
   input.click();
 }
 
-// 移除二维码
-function removeQrCode(id) {
-  mergeCodes = mergeCodes.filter(code => code.id !== id);
-  renderMergeList();
-  updateButtons();
+function canvasToSvgPreview(canvas, labels) {
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = canvas.toDataURL("image/png");
+
+  const textNodes = labels
+    .map((label) => {
+      const text = escapeHtml(label.text);
+      return `<text x="${label.x}" y="${label.y}" text-anchor="middle" font-size="14" fill="#111827">${text}</text>`;
+    })
+    .join("");
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">` +
+    `<rect width="100%" height="100%" fill="#ffffff"/>` +
+    `<image href="${imageData}" width="${width}" height="${height}"/>` +
+    textNodes +
+    "</svg>"
+  );
 }
 
-// 渲染二维码列表
-function renderMergeList() {
-  const list = $('#mergeList');
-  if (!list) return;
-
-  if (mergeCodes.length === 0) {
-    list.innerHTML = `<div class="merge-empty">${window.i18n ? window.i18n.getTranslation('merge.uploadHint', 'en') : 'Upload 2-4 QR code images to merge'}</div>`;
+async function drawMergedGrid() {
+  if (mergeCodes.length < 2) {
+    showError(t("merge.errorNoCodes"));
     return;
   }
 
-  list.innerHTML = mergeCodes.map(code => `
-    <div class="merge-item" data-id="${code.id}">
-      <div class="merge-item-header">
-        <input type="text" class="merge-item-label" placeholder="${window.i18n ? window.i18n.getTranslation('merge.labelPlaceholder', 'en') : 'Label (e.g., WeChat Pay, Alipay)'}" value="${code.label}" onchange="updateQrLabel(${code.id}, this.value)">
-        <button type="button" class="merge-item-remove" onclick="removeQrCode(${code.id})">${window.i18n ? window.i18n.getTranslation('merge.removeCode', 'en') : 'Remove'}</button>
-      </div>
-      <img src="${code.data}" class="merge-item-preview" alt="QR code ${code.label}">
-    </div>
-  `).join('');
-}
+  const preview = $("#mergePreview");
+  if (!preview) return;
 
-// 更新标签
-window.updateQrLabel = function(id, label) {
-  const code = mergeCodes.find(c => c.id === id);
-  if (code) {
-    code.label = label;
+  const rows = Math.ceil(mergeCodes.length / GRID_COLS);
+  const qrSize = 220;
+  const padding = 24;
+  const labelHeight = 26;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = GRID_COLS * (qrSize + padding) + padding;
+  canvas.height = rows * (qrSize + labelHeight + padding) + padding;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    showError(tf("merge.errorGenerate", { error: "Canvas is unavailable" }));
+    return;
   }
-};
 
-// 更新按钮状态
-function updateButtons() {
-  const generateBtn = $('#generateMerge');
-  const downloadSvgBtn = $('#downloadMergeSvg');
-  const downloadPngBtn = $('#downloadMergePng');
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const hasCodes = mergeCodes.length >= 2;
-  generateBtn.disabled = !hasCodes;
-  downloadSvgBtn.disabled = !hasCodes;
-  downloadPngBtn.disabled = !hasCodes;
+  const labelPositions = [];
+
+  try {
+    for (let i = 0; i < mergeCodes.length; i += 1) {
+      const code = mergeCodes[i];
+      const col = i % GRID_COLS;
+      const row = Math.floor(i / GRID_COLS);
+      const x = padding + col * (qrSize + padding);
+      const y = padding + row * (qrSize + labelHeight + padding);
+
+      const img = new Image();
+      img.src = code.data;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      ctx.drawImage(img, x, y, qrSize, qrSize);
+      ctx.fillStyle = "#111827";
+      ctx.font = "600 14px sans-serif";
+      ctx.textAlign = "center";
+
+      const labelText = code.label?.trim() || tf("merge.labelFallback", { index: i + 1 });
+      const labelX = x + qrSize / 2;
+      const labelY = y + qrSize + 18;
+      ctx.fillText(labelText, labelX, labelY);
+      labelPositions.push({ text: labelText, x: labelX, y: labelY });
+    }
+
+    preview.innerHTML = "";
+    const result = document.createElement("img");
+    result.src = canvas.toDataURL("image/png");
+    result.style.maxWidth = "100%";
+    result.alt = t("merge.preview", "Merged QR Preview");
+    preview.append(result);
+
+    lastPreviewCanvas = canvas;
+    lastPreviewSvg = canvasToSvgPreview(canvas, labelPositions);
+    clearError();
+    updateButtons();
+  } catch (error) {
+    showError(tf("merge.errorGenerate", { error: error?.message || error }));
+  }
 }
 
-// 显示错误
-function showError(message) {
-  const errorEl = $('#mergeError');
-  if (!errorEl) return;
+function downloadMergedSvg() {
+  if (!lastPreviewSvg) {
+    showError(t("merge.errorSvgUnsupported"));
+    return;
+  }
 
-  errorEl.textContent = message;
-  errorEl.hidden = false;
-
-  setTimeout(() => {
-    errorEl.hidden = true;
-  }, 5000);
+  downloadBlob("merged-qr-grid.svg", new Blob([lastPreviewSvg], { type: "image/svg+xml" }));
 }
 
-// 生成合并二维码
-async function generateMergedQr() {
-  if (mergeCodes.length < 2) {
-    showError(window.i18n ? window.i18n.getTranslation('merge.errorNoCodes', 'en') : 'Please upload at least 2 QR code images.');
+function downloadMergedPng() {
+  if (!lastPreviewCanvas) {
+    showError(t("merge.errorNothingToDownload"));
     return;
   }
 
   try {
-    await loadQrLibrary();
-
-    const mode = $('#mergeMode')?.value || 'selection';
-
-    if (mode === 'grid') {
-      // 网格模式：生成一张包含所有二维码的大图
-      await generateGridMerged();
-    } else {
-      // 选择页模式：生成一个选择页面的二维码
-      await generateSelectionMerged();
+    const png = lastPreviewCanvas.toDataURL("image/png");
+    const binary = atob(png.split(",")[1]);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      array[i] = binary.charCodeAt(i);
     }
+    downloadBlob("merged-qr-grid.png", new Blob([array], { type: "image/png" }));
   } catch (error) {
-    console.error('Error generating merged QR:', error);
-    showError(window.i18n ? window.i18n.getTranslation('common.error', 'en') : 'Error');
+    showError(tf("merge.errorPng", { error: error?.message || error }));
   }
 }
 
-// 生成网格模式合并图
-async function generateGridMerged() {
-  const canvas = document.createElement('canvas');
-  const cols = mergeCodes.length === 2 ? 2 : 2;
-  const rows = Math.ceil(mergeCodes.length / cols);
-  const qrSize = 200;
-  const padding = 20;
-
-  canvas.width = cols * (qrSize + padding);
-  canvas.height = rows * (qrSize + padding);
-
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let i = 0; i < mergeCodes.length; i++) {
-    const code = mergeCodes[i];
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = col * (qrSize + padding) + padding / 2;
-    const y = row * (qrSize + padding) + padding / 2;
-
-    // 加载图片并绘制
-    const img = new Image();
-    img.src = code.data;
-    await new Promise(resolve => img.onload = resolve);
-
-    ctx.drawImage(img, x, y, qrSize, qrSize);
-
-    // 绘制标签
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    const label = code.label || `QR ${i + 1}`;
-    ctx.fillText(label, x + qrSize / 2, y + qrSize + 15);
+function bindEvents() {
+  const addBtn = $("#addMergeCode");
+  if (addBtn && !addBtn.dataset.bound) {
+    addBtn.addEventListener("click", addQrCode);
+    addBtn.dataset.bound = "true";
   }
 
-  const preview = $('#mergePreview');
-  if (preview) {
-    preview.innerHTML = '';
-    const resultImg = document.createElement('img');
-    resultImg.src = canvas.toDataURL('image/png');
-    resultImg.style.maxWidth = '100%';
-    preview.appendChild(resultImg);
+  const generateBtn = $("#generateMerge");
+  if (generateBtn && !generateBtn.dataset.bound) {
+    generateBtn.addEventListener("click", drawMergedGrid);
+    generateBtn.dataset.bound = "true";
+  }
+
+  const downloadSvgBtn = $("#downloadMergeSvg");
+  if (downloadSvgBtn && !downloadSvgBtn.dataset.bound) {
+    downloadSvgBtn.addEventListener("click", downloadMergedSvg);
+    downloadSvgBtn.dataset.bound = "true";
+  }
+
+  const downloadPngBtn = $("#downloadMergePng");
+  if (downloadPngBtn && !downloadPngBtn.dataset.bound) {
+    downloadPngBtn.addEventListener("click", downloadMergedPng);
+    downloadPngBtn.dataset.bound = "true";
   }
 }
 
-// 生成选择页模式合并二维码
-async function generateSelectionMerged() {
-  // 创建选择页面数据
-  const pageData = {
-    qrCodes: mergeCodes.map(code => ({
-      data: code.data,
-      label: code.label
-    }))
-  };
-
-  // 将数据编码为 Base64
-  const jsonStr = JSON.stringify(pageData);
-  const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
-
-  // 生成指向选择页面的二维码
-  const qr = qrcodeGenerator(0, 'M');
-  qr.addData(base64Data);
-  qr.make();
-
-  const svg = qr.createSvgTag(10, 0);
-
-  const preview = $('#mergePreview');
-  if (preview) {
-    preview.innerHTML = svg;
-  }
-}
-
-// 下载 SVG
-function downloadMergedSvg() {
-  const preview = $('#mergePreview');
-  if (!preview) return;
-
-  const svg = preview.querySelector('svg');
-  if (!svg) return;
-
-  const svgData = new XMLSerializer().serializeToString(svg);
-  const blob = new Blob([svgData], { type: 'image/svg+xml' });
-
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'merged-qr.svg';
-  a.click();
-  a.remove();
-}
-
-// 下载 PNG
-async function downloadMergedPng() {
-  const preview = $('#mergePreview');
-  if (!preview) return;
-
-  const img = preview.querySelector('img, svg');
-  if (!img) return;
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (img.tagName === 'IMG') {
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    ctx.drawImage(img, 0, 0);
-  } else {
-    const svgData = new XMLSerializer().serializeToString(img);
-    const blob = new Blob([svgData], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-
-    const image = new Image();
-    image.onload = () => {
-      canvas.width = image.width;
-      canvas.height = image.height;
-      ctx.drawImage(image, 0, 0);
-      URL.revokeObjectURL(url);
-
-      const pngUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = pngUrl;
-      a.download = 'merged-qr.png';
-      a.click();
-      a.remove();
-    };
-    image.src = url;
-    return;
-  }
-
-  const pngUrl = canvas.toDataURL('image/png');
-  const a = document.createElement('a');
-  a.href = pngUrl;
-  a.download = 'merged-qr.png';
-  a.click();
-  a.remove();
-}
-
-// 初始化
-function init() {
+function rerender() {
+  ensureGridModeOnly();
   renderMergeList();
   updateButtons();
-
-  // 绑定事件
-  const addBtn = $('#addMergeCode');
-  if (addBtn) addBtn.addEventListener('click', addQrCode);
-
-  const generateBtn = $('#generateMerge');
-  if (generateBtn) generateBtn.addEventListener('click', generateMergedQr);
-
-  const downloadSvgBtn = $('#downloadMergeSvg');
-  if (downloadSvgBtn) downloadSvgBtn.addEventListener('click', downloadMergedSvg);
-
-  const downloadPngBtn = $('#downloadMergePng');
-  if (downloadPngBtn) downloadPngBtn.addEventListener('click', downloadMergedPng);
-
-  // 暴露全局函数
-  window.removeQrCode = removeQrCode;
-  window.addQrCode = addQrCode;
 }
 
-// DOM 加载完成后初始化
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+function init() {
+  ensureGridModeOnly();
+  bindEvents();
+  rerender();
+  return { rerender };
+}
+
+window.mergeModule = { init };
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    bindEvents();
+    rerender();
+  });
 } else {
-  init();
+  bindEvents();
+  rerender();
 }

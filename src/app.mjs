@@ -1,154 +1,17 @@
-const $ = (selector, root = document) => root.querySelector(selector);
-
-function getI18n(key) {
-  if (window.i18n && window.i18n.getTranslation) {
-    return window.i18n.getTranslation(key, 'en');
-  }
-  // Fallback English translations
-  const fallbacks = {
-    'wifi.security': 'Security',
-    'wifi.wpa': 'WPA/WPA2',
-    'wifi.wep': 'WEP',
-    'wifi.nopass': 'No Password',
-    'wifi.hidden': 'Hidden Network (H)',
-    'wifi.ssid': 'Wi-Fi Name (SSID)',
-    'wifi.password': 'Password',
-    'tel.label': 'Phone Number',
-    'tel.placeholder': '+86...',
-    'email.to': 'Recipient',
-    'email.toPlaceholder': 'name@example.com',
-    'email.subject': 'Subject (Optional)',
-    'email.body': 'Body (Optional)',
-    'sms.to': 'Recipient Phone Number',
-    'sms.body': 'SMS Content (Optional)',
-    'geo.lat': 'Latitude (lat)',
-    'geo.lng': 'Longitude (lng)',
-    'geo.latPlaceholder': '31.2304',
-    'geo.lngPlaceholder': '121.4737',
-    'geo.query': 'Query (Optional)',
-    'geo.queryPlaceholder': 'e.g., coffee shop',
-    'vcard.name': 'Name (FN)',
-    'vcard.org': 'Organization (ORG)',
-    'vcard.title': 'Title (TITLE)',
-    'vcard.tel': 'Phone (TEL)',
-    'vcard.email': 'Email (EMAIL)',
-    'vcard.url': 'Website (URL)',
-    'vcard.adr': 'Address (ADR, Optional)',
-    'vcard.note': 'Note (NOTE, Optional)',
-    'text.placeholder': 'e.g., https://example.com or any text',
-    'generate.enterContent': 'Please enter content to generate QR code',
-    'generate.failed': 'Generation failed',
-    'batch.noContent': 'Please enter at least one line'
-  };
-  return fallbacks[key] || key;
-}
-
-function setText(el, text) {
-  el.textContent = String(text ?? "");
-}
-
-function showCallout(el, message) {
-  if (!el) return;
-  if (!message) {
-    el.hidden = true;
-    el.textContent = "";
-    return;
-  }
-  el.hidden = false;
-  el.textContent = message;
-}
-
-async function copyText(text) {
-  const value = String(text ?? "");
-  try {
-    await navigator.clipboard.writeText(value);
-    return true;
-  } catch {
-    const ta = document.createElement("textarea");
-    ta.value = value;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-      return true;
-    } finally {
-      ta.remove();
-    }
-  }
-}
-
-function downloadBlob(filename, blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function parseSvgElement(svgText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(String(svgText ?? ""), "image/svg+xml");
-  if (doc.querySelector("parsererror")) throw new Error("SVG 解析失败");
-  const svg = doc.documentElement;
-  if (!svg || svg.nodeName.toLowerCase() !== "svg") throw new Error("SVG 解析失败");
-  return document.importNode(svg, true);
-}
-
-function printWithMode(mode, { beforePrint, afterPrint } = {}) {
-  const body = document.body;
-  let cleaned = false;
-
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    try {
-      afterPrint?.();
-    } finally {
-      delete body.dataset.print;
-    }
-  };
-
-  const onAfterPrint = () => cleanup();
-  const onFocus = () => setTimeout(cleanup, 250);
-
-  window.addEventListener("afterprint", onAfterPrint, { once: true });
-  window.addEventListener("focus", onFocus, { once: true });
-
-  body.dataset.print = String(mode || "");
-
-  try {
-    beforePrint?.();
-  } catch (err) {
-    cleanup();
-    throw err;
-  }
-
-  setTimeout(() => {
-    try {
-      window.print();
-    } catch {
-      cleanup();
-    }
-  }, 0);
-}
-
-function clampNumber(value, { min, max, fallback }) {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return fallback;
-  return Math.min(max, Math.max(min, numberValue));
-}
-
-function normalizeHex(hex, fallback) {
-  const s = String(hex || "").trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
-  return fallback;
-}
+import {
+  $,
+  clampNumber,
+  copyText,
+  downloadBlob,
+  isProbablyUrl,
+  normalizeHex,
+  parseSvgElement,
+  printWithMode,
+  setText,
+  showCallout,
+} from "./core/dom.mjs";
+import { t, tf } from "./core/i18n.mjs";
+import { loadQrFactory } from "./core/qr-engine.mjs";
 
 function escapeVCardValue(value) {
   return String(value ?? "")
@@ -168,7 +31,7 @@ function buildPayload(type, fields) {
       const password = fields.password ?? "";
       const hidden = fields.hidden ? "true" : "false";
       const safeSec = security === "nopass" ? "nopass" : security;
-      const escapeWifi = (s) => String(s ?? "").replaceAll("\\", "\\\\").replaceAll(";", "\\;");
+      const escapeWifi = (text) => String(text ?? "").replaceAll("\\", "\\\\").replaceAll(";", "\\;");
       return `WIFI:T:${safeSec};S:${escapeWifi(ssid)};P:${escapeWifi(password)};H:${hidden};;`;
     }
     case "tel":
@@ -192,8 +55,8 @@ function buildPayload(type, fields) {
     case "geo": {
       const lat = String(fields.lat ?? "").trim();
       const lng = String(fields.lng ?? "").trim();
-      const q = String(fields.q ?? "").trim();
-      if (q) return `geo:${lat},${lng}?q=${encodeURIComponent(q)}`;
+      const query = String(fields.q ?? "").trim();
+      if (query) return `geo:${lat},${lng}?q=${encodeURIComponent(query)}`;
       return `geo:${lat},${lng}`;
     }
     case "vcard": {
@@ -219,6 +82,7 @@ function buildPayload(type, fields) {
         note ? `NOTE:${note}` : "",
         "END:VCARD",
       ].filter(Boolean);
+
       return lines.join("\n");
     }
     default:
@@ -231,8 +95,8 @@ function buildSvgFromQrMatrix(qr, { quietZone, fg, bg }) {
   const dim = count + quietZone * 2;
 
   let path = "";
-  for (let row = 0; row < count; row++) {
-    for (let col = 0; col < count; col++) {
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
       if (!qr.isDark(row, col)) continue;
       const x = col + quietZone;
       const y = row + quietZone;
@@ -244,7 +108,7 @@ function buildSvgFromQrMatrix(qr, { quietZone, fg, bg }) {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim} ${dim}" shape-rendering="crispEdges">` +
     `<rect width="100%" height="100%" fill="${bg}"/>` +
     `<path d="${path}" fill="${fg}"/>` +
-    `</svg>`
+    "</svg>"
   );
 }
 
@@ -252,19 +116,19 @@ function renderQrToCanvas(qr, canvas, { scale, quietZone, fg, bg }) {
   const count = qr.getModuleCount();
   const margin = quietZone * scale;
   const size = count * scale + margin * 2;
+
   canvas.width = size;
   canvas.height = size;
 
   const ctx = canvas.getContext("2d", { alpha: false });
-  if (!ctx) throw new Error("无法创建 Canvas 画布");
+  if (!ctx) throw new Error("Canvas context unavailable");
   ctx.imageSmoothingEnabled = false;
-
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, size, size);
 
   ctx.fillStyle = fg;
-  for (let row = 0; row < count; row++) {
-    for (let col = 0; col < count; col++) {
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
       if (!qr.isDark(row, col)) continue;
       ctx.fillRect(margin + col * scale, margin + row * scale, scale, scale);
     }
@@ -287,14 +151,15 @@ async function drawLogoOnCanvas(canvas, { imageBitmap, ratio, whiteBg }) {
   if (whiteBg) {
     const pad = Math.floor(logoSize * 0.12);
     const r = Math.floor(logoSize * 0.16);
-    ctx.save();
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
     const w = logoSize + pad * 2;
     const h = logoSize + pad * 2;
     const rx = x - pad;
     const ry = y - pad;
     const rr = Math.min(r, w / 2, h / 2);
+
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
     ctx.moveTo(rx + rr, ry);
     ctx.arcTo(rx + w, ry, rx + w, ry + h, rr);
     ctx.arcTo(rx + w, ry + h, rx, ry + h, rr);
@@ -306,26 +171,11 @@ async function drawLogoOnCanvas(canvas, { imageBitmap, ratio, whiteBg }) {
   }
 
   const scale = Math.min(logoSize / imageBitmap.width, logoSize / imageBitmap.height);
-  const w = Math.floor(imageBitmap.width * scale);
-  const h = Math.floor(imageBitmap.height * scale);
-  const dx = Math.floor(x + (logoSize - w) / 2);
-  const dy = Math.floor(y + (logoSize - h) / 2);
-  ctx.drawImage(imageBitmap, dx, dy, w, h);
-}
-
-async function loadQrFactory() {
-  const candidates = ["./vendor/qrcode-generator.mjs", "https://unpkg.com/qrcode-generator@2.0.4/dist/qrcode.mjs"];
-  let lastError;
-  for (const url of candidates) {
-    try {
-      const mod = await import(url);
-      if (!mod?.qrcode) throw new Error(`模块缺少 qrcode 导出：${url}`);
-      return mod.qrcode;
-    } catch (err) {
-      lastError = err;
-    }
-  }
-  throw lastError || new Error("无法加载二维码引擎");
+  const width = Math.floor(imageBitmap.width * scale);
+  const height = Math.floor(imageBitmap.height * scale);
+  const dx = Math.floor(x + (logoSize - width) / 2);
+  const dy = Math.floor(y + (logoSize - height) / 2);
+  ctx.drawImage(imageBitmap, dx, dy, width, height);
 }
 
 function initTabs() {
@@ -333,50 +183,58 @@ function initTabs() {
   const panels = Array.from(document.querySelectorAll(".tab-panel"));
 
   function setActive(tabId) {
-    for (const btn of tabButtons) btn.classList.toggle("is-active", btn.dataset.tab === tabId);
-    for (const panel of panels) panel.classList.toggle("is-active", panel.id === `tab-${tabId}`);
+    tabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.tab === tabId));
+    panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === `tab-${tabId}`));
     history.replaceState(null, "", `#${tabId}`);
   }
 
-  for (const btn of tabButtons) {
+  tabButtons.forEach((btn) => {
     btn.addEventListener("click", () => setActive(btn.dataset.tab));
-  }
+  });
 
   const initial = location.hash?.slice(1);
-  if (initial && tabButtons.some((b) => b.dataset.tab === initial)) setActive(initial);
+  if (initial && tabButtons.some((btn) => btn.dataset.tab === initial)) {
+    setActive(initial);
+  }
 }
 
 function mountTypeFields(container, type) {
   container.innerHTML = "";
 
-  const mkInput = ({ id, label, placeholder = "", type = "text" }) => {
+  const mkInput = ({ id, label, placeholder = "", type: inputType = "text" }) => {
     const wrap = document.createElement("div");
     wrap.className = "field";
-    const lab = document.createElement("label");
-    lab.setAttribute("for", id);
-    lab.textContent = label;
+
+    const labelEl = document.createElement("label");
+    labelEl.setAttribute("for", id);
+    labelEl.textContent = label;
+
     const input = document.createElement("input");
     input.id = id;
     input.name = id;
-    input.type = type;
+    input.type = inputType;
     input.placeholder = placeholder;
-    wrap.append(lab, input);
+
+    wrap.append(labelEl, input);
     return wrap;
   };
 
   const mkTextarea = ({ id, label, placeholder = "", rows = 4 }) => {
     const wrap = document.createElement("div");
     wrap.className = "field";
-    const lab = document.createElement("label");
-    lab.setAttribute("for", id);
-    lab.textContent = label;
-    const input = document.createElement("textarea");
-    input.id = id;
-    input.name = id;
-    input.rows = rows;
-    input.placeholder = placeholder;
-    input.spellcheck = false;
-    wrap.append(lab, input);
+
+    const labelEl = document.createElement("label");
+    labelEl.setAttribute("for", id);
+    labelEl.textContent = label;
+
+    const textarea = document.createElement("textarea");
+    textarea.id = id;
+    textarea.name = id;
+    textarea.rows = rows;
+    textarea.placeholder = placeholder;
+    textarea.spellcheck = false;
+
+    wrap.append(labelEl, textarea);
     return wrap;
   };
 
@@ -384,9 +242,9 @@ function mountTypeFields(container, type) {
     container.append(
       mkTextarea({
         id: "text",
-        label: getI18n("text.label"),
+        label: t("text.label", "URL / Text"),
         rows: 5,
-        placeholder: getI18n("text.placeholder"),
+        placeholder: t("text.placeholder", "e.g., https://example.com"),
       }),
     );
     return;
@@ -396,56 +254,57 @@ function mountTypeFields(container, type) {
     const grid = document.createElement("div");
     grid.className = "grid-2";
     grid.append(
-      mkInput({ id: "ssid", label: getI18n("wifi.ssid") }),
-      mkInput({ id: "password", label: getI18n("wifi.password"), type: "password" }),
+      mkInput({ id: "ssid", label: t("wifi.ssid", "Wi-Fi Name (SSID)") }),
+      mkInput({ id: "password", label: t("wifi.password", "Password"), type: "password" }),
     );
+
     const security = document.createElement("div");
     security.className = "field";
-    const lab = document.createElement("label");
-    lab.setAttribute("for", "security");
-    lab.textContent = getI18n("wifi.security");
-    const sel = document.createElement("select");
-    sel.id = "security";
-    sel.name = "security";
-    sel.innerHTML = `
-      <option value="WPA" selected>${getI18n("wifi.wpa")}</option>
-      <option value="WEP">${getI18n("wifi.wep")}</option>
-      <option value="nopass">${getI18n("wifi.nopass")}</option>
+    const securityLabel = document.createElement("label");
+    securityLabel.setAttribute("for", "security");
+    securityLabel.textContent = t("wifi.security", "Security");
+    const securitySelect = document.createElement("select");
+    securitySelect.id = "security";
+    securitySelect.name = "security";
+    securitySelect.innerHTML = `
+      <option value="WPA" selected>${t("wifi.wpa", "WPA/WPA2")}</option>
+      <option value="WEP">${t("wifi.wep", "WEP")}</option>
+      <option value="nopass">${t("wifi.nopass", "No Password")}</option>
     `;
-    security.append(lab, sel);
+    security.append(securityLabel, securitySelect);
 
     const hiddenWrap = document.createElement("label");
     hiddenWrap.className = "checkbox";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = "hidden";
-    cb.name = "hidden";
-    const span = document.createElement("span");
-    span.textContent = getI18n("wifi.hidden");
-    hiddenWrap.append(cb, span);
+    const hiddenCheckbox = document.createElement("input");
+    hiddenCheckbox.type = "checkbox";
+    hiddenCheckbox.id = "hidden";
+    hiddenCheckbox.name = "hidden";
+    const hiddenText = document.createElement("span");
+    hiddenText.textContent = t("wifi.hidden", "Hidden Network (H)");
+    hiddenWrap.append(hiddenCheckbox, hiddenText);
 
     container.append(grid, security, hiddenWrap);
     return;
   }
 
   if (type === "tel") {
-    container.append(mkInput({ id: "tel", label: getI18n("tel.label"), placeholder: getI18n("tel.placeholder") }));
+    container.append(mkInput({ id: "tel", label: t("tel.label", "Phone Number"), placeholder: t("tel.placeholder", "+86...") }));
     return;
   }
 
   if (type === "email") {
     container.append(
-      mkInput({ id: "to", label: getI18n("email.to"), placeholder: getI18n("email.toPlaceholder") }),
-      mkInput({ id: "subject", label: getI18n("email.subject") }),
-      mkTextarea({ id: "body", label: getI18n("email.body"), rows: 4 }),
+      mkInput({ id: "to", label: t("email.to", "Recipient"), placeholder: t("email.toPlaceholder", "name@example.com") }),
+      mkInput({ id: "subject", label: t("email.subject", "Subject (Optional)") }),
+      mkTextarea({ id: "body", label: t("email.body", "Body (Optional)"), rows: 4 }),
     );
     return;
   }
 
   if (type === "sms") {
     container.append(
-      mkInput({ id: "to", label: getI18n("sms.to") }),
-      mkTextarea({ id: "body", label: getI18n("sms.body"), rows: 4 }),
+      mkInput({ id: "to", label: t("sms.to", "Recipient Phone Number") }),
+      mkTextarea({ id: "body", label: t("sms.body", "SMS Content (Optional)"), rows: 4 }),
     );
     return;
   }
@@ -453,23 +312,29 @@ function mountTypeFields(container, type) {
   if (type === "geo") {
     const grid = document.createElement("div");
     grid.className = "grid-2";
-    grid.append(mkInput({ id: "lat", label: getI18n("geo.lat"), placeholder: getI18n("geo.latPlaceholder") }), mkInput({ id: "lng", label: getI18n("geo.lng"), placeholder: getI18n("geo.lngPlaceholder") }));
-    container.append(grid, mkInput({ id: "q", label: getI18n("geo.query"), placeholder: getI18n("geo.queryPlaceholder") }));
+    grid.append(
+      mkInput({ id: "lat", label: t("geo.lat", "Latitude (lat)"), placeholder: t("geo.latPlaceholder", "31.2304") }),
+      mkInput({ id: "lng", label: t("geo.lng", "Longitude (lng)"), placeholder: t("geo.lngPlaceholder", "121.4737") }),
+    );
+    container.append(grid, mkInput({ id: "q", label: t("geo.query", "Query (Optional)"), placeholder: t("geo.queryPlaceholder", "e.g., coffee shop") }));
     return;
   }
 
   if (type === "vcard") {
     const grid = document.createElement("div");
     grid.className = "grid-2";
-    grid.append(mkInput({ id: "name", label: getI18n("vcard.name") }), mkInput({ id: "org", label: getI18n("vcard.org") }));
+    grid.append(
+      mkInput({ id: "name", label: t("vcard.name", "Name (FN)") }),
+      mkInput({ id: "org", label: t("vcard.org", "Organization (ORG)") }),
+    );
     container.append(
       grid,
-      mkInput({ id: "title", label: getI18n("vcard.title") }),
-      mkInput({ id: "tel", label: getI18n("vcard.tel") }),
-      mkInput({ id: "email", label: getI18n("vcard.email") }),
-      mkInput({ id: "url", label: getI18n("vcard.url") }),
-      mkTextarea({ id: "adr", label: getI18n("vcard.adr"), rows: 2 }),
-      mkTextarea({ id: "note", label: getI18n("vcard.note"), rows: 3 }),
+      mkInput({ id: "title", label: t("vcard.title", "Title (TITLE)") }),
+      mkInput({ id: "tel", label: t("vcard.tel", "Phone (TEL)") }),
+      mkInput({ id: "email", label: t("vcard.email", "Email (EMAIL)") }),
+      mkInput({ id: "url", label: t("vcard.url", "Website (URL)") }),
+      mkTextarea({ id: "adr", label: t("vcard.adr", "Address (ADR, Optional)"), rows: 2 }),
+      mkTextarea({ id: "note", label: t("vcard.note", "Note (NOTE, Optional)"), rows: 3 }),
     );
   }
 }
@@ -478,21 +343,13 @@ function collectFields(typeFieldsRoot) {
   const data = {};
   const inputs = typeFieldsRoot.querySelectorAll("input,select,textarea");
   for (const el of inputs) {
-    if (el.type === "checkbox") data[el.name] = el.checked;
-    else data[el.name] = el.value;
+    if (el.type === "checkbox") {
+      data[el.name] = el.checked;
+    } else {
+      data[el.name] = el.value;
+    }
   }
   return data;
-}
-
-function isProbablyUrl(text) {
-  const value = String(text || "").trim();
-  if (!value) return false;
-  try {
-    const u = new URL(value);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function initGenerator(qrcodeFactory) {
@@ -522,85 +379,52 @@ function initGenerator(qrcodeFactory) {
 
   let logoBitmap = null;
 
-  const ensureUtf8 = () => {
-    if (!qrcodeFactory) return;
-    try {
-      qrcodeFactory.stringToBytes = (s) => Array.from(new TextEncoder().encode(String(s ?? "")));
-    } catch {
-      // ignore
-    }
-  };
-  ensureUtf8();
-
   const setLogoRatioLabel = () => {
     const ratio = clampNumber(logoSize.value, { min: 0, max: 0.35, fallback: 0 });
     setText(logoSizeLabel, `${Math.round(ratio * 100)}%`);
   };
-  setLogoRatioLabel();
 
-  async function updateLogoBitmap() {
-    const file = logoFile.files?.[0];
-    if (!file) {
-      logoBitmap?.close?.();
-      logoBitmap = null;
-      return;
-    }
-    try {
-      const bmp = await createImageBitmap(file);
-      logoBitmap?.close?.();
-      logoBitmap = bmp;
-    } catch (err) {
-      showCallout(errorEl, `Logo 图片无法读取：${err?.message || err}`);
-    }
-  }
-
-  function getGenState() {
+  const getGenState = () => {
     const genFields = collectFields(typeFields);
     const type = genType.value;
     const built = buildPayload(type, genFields);
-    const override = !!payloadOverride?.checked;
+    const override = Boolean(payloadOverride?.checked);
     const finalPayload = override ? String(payload.value ?? "").trim() : built;
-
-    const eccValue = String(ecc.value || "M").toUpperCase();
-    const versionValue = clampNumber(version.value, { min: 0, max: 40, fallback: 0 });
-    const scaleValue = clampNumber(scale.value, { min: 2, max: 40, fallback: 10 });
-    const quietValue = clampNumber(quiet.value, { min: 0, max: 12, fallback: 4 });
-    const fgValue = normalizeHex(fg.value, "#0b1220");
-    const bgValue = normalizeHex(bg.value, "#ffffff");
-
-    const logoRatio = clampNumber(logoSize.value, { min: 0, max: 0.35, fallback: 0 });
-    const whiteBg = !!logoWhiteBg.checked;
 
     return {
       type,
-      fields: genFields,
       builtPayload: built,
       payload: finalPayload,
       payloadOverride: override,
-      ecc: eccValue,
-      version: versionValue,
-      scale: scaleValue,
-      quiet: quietValue,
-      fg: fgValue,
-      bg: bgValue,
-      logo: { ratio: logoRatio, whiteBg },
+      ecc: String(ecc.value || "M").toUpperCase(),
+      version: clampNumber(version.value, { min: 0, max: 40, fallback: 0 }),
+      scale: clampNumber(scale.value, { min: 2, max: 40, fallback: 10 }),
+      quiet: clampNumber(quiet.value, { min: 0, max: 12, fallback: 4 }),
+      fg: normalizeHex(fg.value, "#0b1220"),
+      bg: normalizeHex(bg.value, "#ffffff"),
+      logo: {
+        ratio: clampNumber(logoSize.value, { min: 0, max: 0.35, fallback: 0 }),
+        whiteBg: Boolean(logoWhiteBg.checked),
+      },
     };
-  }
+  };
 
-  function render() {
+  const render = () => {
     const state = getGenState();
+
     payload.readOnly = !state.payloadOverride;
     if (!state.payloadOverride) payload.value = state.builtPayload;
 
     if (state.payloadOverride) {
-      setText(payloadHint, "已手动覆盖：类型字段不再自动同步。");
+      setText(payloadHint, t("generate.overrideHint"));
     } else {
-      setText(payloadHint, state.type === "text" && isProbablyUrl(state.payload) ? "看起来是 URL，可扫码直接打开。" : "");
+      setText(payloadHint, state.type === "text" && isProbablyUrl(state.payload) ? t("generate.urlHint") : "");
     }
+
     showCallout(errorEl, "");
 
     if (!state.payload) {
-      qrPreview.innerHTML = `<div class="muted">请输入内容以生成二维码</div>`;
+      qrPreview.innerHTML = `<div class="muted">${t("generate.enterContent")}</div>`;
       setText(qrMeta, "—");
       return;
     }
@@ -612,25 +436,54 @@ function initGenerator(qrcodeFactory) {
 
       const count = qr.getModuleCount();
       const dim = count + state.quiet * 2;
-      setText(qrMeta, `${count}×${count} 模块 · 视图 ${dim}×${dim} · ECC ${state.ecc}`);
+      setText(qrMeta, tf("generate.meta", { count, dim, ecc: state.ecc }));
 
-      const svg = buildSvgFromQrMatrix(qr, { quietZone: state.quiet, fg: state.fg, bg: state.bg });
+      const svg = buildSvgFromQrMatrix(qr, {
+        quietZone: state.quiet,
+        fg: state.fg,
+        bg: state.bg,
+      });
       qrPreview.innerHTML = svg;
 
-      renderQrToCanvas(qr, canvas, { scale: state.scale, quietZone: state.quiet, fg: state.fg, bg: state.bg });
-      drawLogoOnCanvas(canvas, { imageBitmap: logoBitmap, ratio: state.logo.ratio, whiteBg: state.logo.whiteBg }).catch(() => {});
-    } catch (err) {
-      qrPreview.innerHTML = `<div class="muted">${getI18n("generate.failed")}</div>;
+      renderQrToCanvas(qr, canvas, {
+        scale: state.scale,
+        quietZone: state.quiet,
+        fg: state.fg,
+        bg: state.bg,
+      });
+      drawLogoOnCanvas(canvas, {
+        imageBitmap: logoBitmap,
+        ratio: state.logo.ratio,
+        whiteBg: state.logo.whiteBg,
+      }).catch(() => {});
+    } catch (error) {
+      qrPreview.innerHTML = `<div class="muted">${t("generate.failed")}</div>`;
       setText(qrMeta, "—");
-      showCallout(errorEl, `生成失败：${err?.message || err}`);
+      showCallout(errorEl, tf("generate.failed") + `: ${error?.message || error}`);
     }
-  }
+  };
+
+  const updateLogoBitmap = async () => {
+    const file = logoFile.files?.[0];
+    if (!file) {
+      logoBitmap?.close?.();
+      logoBitmap = null;
+      return;
+    }
+
+    try {
+      const bitmap = await createImageBitmap(file);
+      logoBitmap?.close?.();
+      logoBitmap = bitmap;
+    } catch (error) {
+      showCallout(errorEl, tf("generate.logoReadFailed", { error: error?.message || error }));
+    }
+  };
 
   genType.addEventListener("change", () => {
     mountTypeFields(typeFields, genType.value);
     render();
   });
-  mountTypeFields(typeFields, genType.value);
 
   $("#genForm").addEventListener("input", () => {
     setLogoRatioLabel();
@@ -639,7 +492,7 @@ function initGenerator(qrcodeFactory) {
 
   $("#copyPayload").addEventListener("click", async () => {
     const ok = await copyText(payload.value);
-    showCallout(errorEl, ok ? "" : "复制失败：浏览器禁止访问剪贴板");
+    showCallout(errorEl, ok ? "" : t("generate.copyFailed"));
   });
 
   logoFile.addEventListener("change", async () => {
@@ -650,14 +503,19 @@ function initGenerator(qrcodeFactory) {
   $("#downloadSvg").addEventListener("click", () => {
     const state = getGenState();
     if (!state.payload) return;
+
     try {
       const qr = qrcodeFactory(state.version, state.ecc);
       qr.addData(state.payload);
       qr.make();
-      const svg = buildSvgFromQrMatrix(qr, { quietZone: state.quiet, fg: state.fg, bg: state.bg });
+      const svg = buildSvgFromQrMatrix(qr, {
+        quietZone: state.quiet,
+        fg: state.fg,
+        bg: state.bg,
+      });
       downloadBlob("qrcode.svg", new Blob([svg], { type: "image/svg+xml" }));
-    } catch (err) {
-      showCallout(errorEl, `导出 SVG 失败：${err?.message || err}`);
+    } catch (error) {
+      showCallout(errorEl, tf("generate.svgFailed", { error: error?.message || error }));
     }
   });
 
@@ -666,7 +524,7 @@ function initGenerator(qrcodeFactory) {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          showCallout(errorEl, "导出 PNG 失败：无法创建图片");
+          showCallout(errorEl, t("generate.pngFailed"));
           return;
         }
         downloadBlob("qrcode.png", blob);
@@ -679,17 +537,21 @@ function initGenerator(qrcodeFactory) {
   $("#printSingle").addEventListener("click", () => {
     const state = getGenState();
     if (!state.payload) {
-      showCallout(errorEl, "请输入内容后再打印。");
+      showCallout(errorEl, t("generate.printNoPayload"));
       return;
     }
 
     try {
-      if (!printArea || !printQr) throw new Error("打印区域缺失");
+      if (!printArea || !printQr) throw new Error(t("generate.printAreaMissing"));
 
       const qr = qrcodeFactory(state.version, state.ecc);
       qr.addData(state.payload);
       qr.make();
-      const svgText = buildSvgFromQrMatrix(qr, { quietZone: state.quiet, fg: state.fg, bg: state.bg });
+      const svgText = buildSvgFromQrMatrix(qr, {
+        quietZone: state.quiet,
+        fg: state.fg,
+        bg: state.bg,
+      });
       const svgEl = parseSvgElement(svgText);
 
       printWithMode("single", {
@@ -702,15 +564,19 @@ function initGenerator(qrcodeFactory) {
           printArea.hidden = true;
         },
       });
-    } catch (err) {
-      showCallout(errorEl, `打印失败：${err?.message || err}`);
+    } catch (error) {
+      showCallout(errorEl, tf("generate.printFailed", { error: error?.message || error }));
     }
   });
 
+  mountTypeFields(typeFields, genType.value);
+  setLogoRatioLabel();
   render();
-  setText(qrLibStatus, "QR 引擎：就绪");
+
+  setText(qrLibStatus, t("site.engineReady"));
   qrLibStatus.classList.remove("pill--muted");
-  qrLibStatus.classList.add("pill");
+
+  return { rerender: render };
 }
 
 function initScanner() {
@@ -742,30 +608,35 @@ function initScanner() {
 
   const ensureDetector = async () => {
     if (detector) return detector;
-    if (!("BarcodeDetector" in window)) throw new Error("当前浏览器不支持 BarcodeDetector");
+    if (!("BarcodeDetector" in window)) throw new Error(t("scan.errorNotSupported"));
+
     const formats = await BarcodeDetector.getSupportedFormats();
-    if (!formats.includes("qr_code")) throw new Error("当前浏览器不支持识别 QR Code");
+    if (!formats.includes("qr_code")) throw new Error(t("scan.errorNoQrSupport"));
+
     detector = new BarcodeDetector({ formats: ["qr_code"] });
     return detector;
   };
 
-  async function stop() {
+  const stop = async () => {
     running = false;
     startBtn.disabled = false;
     stopBtn.disabled = true;
-    setText(statusEl, "状态：已停止");
-    if (video) {
-      video.pause?.();
-      video.srcObject = null;
-    }
+    setText(statusEl, t("scan.statusStopped"));
+
+    video.pause?.();
+    video.srcObject = null;
+
     if (stream) {
-      for (const track of stream.getTracks()) track.stop();
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
     }
     stream = null;
-  }
+  };
 
-  async function loop() {
+  const loop = async () => {
     if (!running) return;
+
     try {
       const det = await ensureDetector();
       const results = await det.detect(video);
@@ -773,28 +644,31 @@ function initScanner() {
         const value = results[0]?.rawValue || "";
         await setResult(value);
       }
-    } catch (err) {
-      showCallout(errorEl, `识别失败：${err?.message || err}`);
+    } catch (error) {
+      showCallout(errorEl, tf("scan.errorDetect", { error: error?.message || error }));
     } finally {
       setTimeout(loop, 120);
     }
-  }
+  };
 
   startBtn.addEventListener("click", async () => {
     showCallout(errorEl, "");
     try {
       await ensureDetector();
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
       video.srcObject = stream;
       await video.play();
       running = true;
       startBtn.disabled = true;
       stopBtn.disabled = false;
-      setText(statusEl, "状态：识别中…");
+      setText(statusEl, t("scan.statusRunning"));
       loop();
-    } catch (err) {
+    } catch (error) {
       await stop();
-      showCallout(errorEl, `无法启动摄像头：${err?.message || err}`);
+      showCallout(errorEl, tf("scan.errorCamera", { error: error?.message || error }));
     }
   });
 
@@ -804,42 +678,46 @@ function initScanner() {
     showCallout(errorEl, "");
     const file = fileInput.files?.[0];
     if (!file) return;
-    let bmp = null;
+
+    let bitmap = null;
     try {
       const det = await ensureDetector();
-      bmp = await createImageBitmap(file);
-      const results = await det.detect(bmp);
+      bitmap = await createImageBitmap(file);
+      const results = await det.detect(bitmap);
       if (!results?.length) {
-        showCallout(errorEl, "未识别到二维码。");
+        showCallout(errorEl, t("scan.errorNoCode"));
         await setResult("");
         return;
       }
       await setResult(results[0].rawValue || "");
-    } catch (err) {
-      showCallout(errorEl, `图片识别失败：${err?.message || err}`);
+    } catch (error) {
+      showCallout(errorEl, tf("scan.errorImage", { error: error?.message || error }));
     } finally {
-      bmp?.close?.();
+      bitmap?.close?.();
     }
   });
 
   $("#copyScan").addEventListener("click", async () => {
     const ok = await copyText(resultEl.value);
-    showCallout(errorEl, ok ? "" : "复制失败：浏览器禁止访问剪贴板");
+    showCallout(errorEl, ok ? "" : t("scan.copyFailed"));
   });
+
+  return { rerender: () => {} };
 }
 
 function parseBatchLines(text) {
   const lines = String(text || "")
     .split(/\r?\n/)
-    .map((l) => l.trim())
+    .map((line) => line.trim())
     .filter(Boolean);
 
   return lines.map((line) => {
-    const idx = line.indexOf(",");
-    if (idx === -1) return { label: "", value: line };
-    const label = line.slice(0, idx).trim();
-    const value = line.slice(idx + 1).trim();
-    return { label, value };
+    const commaIndex = line.indexOf(",");
+    if (commaIndex === -1) return { label: "", value: line };
+    return {
+      label: line.slice(0, commaIndex).trim(),
+      value: line.slice(commaIndex + 1).trim(),
+    };
   });
 }
 
@@ -857,7 +735,7 @@ function initBatch(qrcodeFactory) {
   const cols = $("#batchCols");
   const cell = $("#batchCell");
 
-  function build() {
+  const build = () => {
     showCallout(errEl, "");
     gridEl.innerHTML = "";
     setText(metaEl, "—");
@@ -866,7 +744,7 @@ function initBatch(qrcodeFactory) {
 
     const items = parseBatchLines(input.value);
     if (!items.length) {
-      setText(hintEl, "请输入至少一行内容。");
+      setText(hintEl, t("batch.noContent"));
       return;
     }
 
@@ -882,58 +760,73 @@ function initBatch(qrcodeFactory) {
         const qr = qrcodeFactory(0, eccValue);
         qr.addData(item.value);
         qr.make();
-        const svg = buildSvgFromQrMatrix(qr, { quietZone: quietValue, fg: "#000000", bg: "#ffffff" });
+
+        const svg = buildSvgFromQrMatrix(qr, {
+          quietZone: quietValue,
+          fg: "#000000",
+          bg: "#ffffff",
+        });
+
         const wrap = document.createElement("div");
         wrap.className = "batch-item";
+
         const label = document.createElement("div");
         label.className = "batch-label";
         label.textContent = item.label || item.value;
+
         const svgEl = parseSvgElement(svg);
         svgEl.style.width = `${(qr.getModuleCount() + quietValue * 2) * cellValue}px`;
+
         wrap.append(svgEl, label);
         gridEl.append(wrap);
       }
-      setText(metaEl, `${items.length} 个 · ECC ${eccValue}`);
+
+      setText(metaEl, tf("batch.meta", { count: items.length, ecc: eccValue }));
       printBtn.disabled = false;
-    } catch (err) {
-      showCallout(errEl, `批量生成失败：${err?.message || err}`);
+    } catch (error) {
+      showCallout(errEl, tf("batch.failed", { error: error?.message || error }));
     }
-  }
+  };
 
   buildBtn.addEventListener("click", build);
   printBtn.addEventListener("click", () => printWithMode("batch"));
+
+  return { rerender: build };
 }
 
 async function main() {
   initTabs();
 
   const status = $("#qrLibStatus");
+
+  const scanner = initScanner();
+
+  let modules = [];
   try {
     const qrcodeFactory = await loadQrFactory();
-    initGenerator(qrcodeFactory);
-    initBatch(qrcodeFactory);
-    setText(status, getI18n("site.engineReady"));
-  } catch (err) {
-    setText(status, getI18n("site.engineLoading") + " - Unavailable");
+    modules = [
+      initGenerator(qrcodeFactory),
+      initBatch(qrcodeFactory),
+      scanner,
+      window.mergeModule?.init?.(qrcodeFactory) ?? { rerender: () => {} },
+    ];
+
+    setText(status, t("site.engineReady"));
+    status.classList.remove("pill--muted");
+  } catch (error) {
+    setText(status, t("site.engineUnavailable"));
     status.classList.add("pill--muted");
-    console.error(err);
-    showCallout($("#genError"), `QR code engine failed to load. May be offline or CDN unreachable.\n\nError: ${err?.message || err}\n\nOffline solution: Download qrcode-generator ESM file to src/vendor/qrcode-generator.mjs`);
+    console.error(error);
+    showCallout(
+      $("#genError"),
+      `QR code engine failed to load.\n\nError: ${error?.message || error}\n\nOffline solution: Download qrcode-generator ESM file to src/vendor/qrcode-generator.mjs`,
+    );
+    modules = [scanner];
   }
 
-  initScanner();
-
-  // 监听语言变化事件
-  window.addEventListener('i18n-changed', () => {
-    console.log('Language changed, re-rendering...');
-    // 重新触发当前 tab 的 render
-    const activeTab = document.querySelector('.tab.is-active');
-    if (activeTab) {
-      const tabId = activeTab.getAttribute('data-tab');
-      if (tabId === 'generate') {
-        render();
-      } else if (tabId === 'batch') {
-        buildBatchPreview();
-      }
+  window.addEventListener("i18n-changed", () => {
+    for (const module of modules) {
+      module?.rerender?.();
     }
   });
 }

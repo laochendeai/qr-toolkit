@@ -276,12 +276,11 @@
           <div class="stack">
             <div class="field">
               <label data-i18n="merge.mergeMode">Merge Mode</label>
-              <select id="mergeMode">
-                <option value="selection" selected data-i18n="merge.modeSelection">Selection Page (Best for payments)</option>
-                <option value="grid" data-i18n="merge.modeGrid">Grid Layout (Best for sharing)</option>
+              <select id="mergeMode" disabled>
+                <option value="grid" selected data-i18n="merge.modeGrid">Grid Layout (Best for sharing)</option>
               </select>
             </div>
-            <div class="hint muted" data-i18n="merge.modeDescription">Selection mode creates a page where users choose which QR to scan. Grid mode shows all QRs in one image.</div>
+            <div class="hint muted" data-i18n="merge.modeDescription">Generate one combined image containing all uploaded QR codes.</div>
 
             <div class="field">
               <label data-i18n="merge.uploadCodes">Upload QR Codes</label>
